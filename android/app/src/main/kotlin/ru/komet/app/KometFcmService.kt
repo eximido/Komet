@@ -38,8 +38,10 @@ class KometFcmService : FirebaseMessagingService() {
             Log.d("KometFcm", "message push dropped: FKM handles messages")
             return
         }
-        KometNotifier(applicationContext).handle(data)
-        if (type != "InboundCall" && type != "CallFinished") {
+        // false — принятое сообщение уже прочитано: гасим уведомление и не добавляем +1 к бейджу,
+        // иначе на иконке окажется «непрочитанное», которого на самом деле нет.
+        val surfaced = KometNotifier(applicationContext).handle(data)
+        if (surfaced && type != "InboundCall" && type != "CallFinished") {
             LauncherBadge.countPush(applicationContext, data["mc"]?.toLongOrNull() ?: 0L)
         }
     }
@@ -75,17 +77,43 @@ class KometNotifier(private val ctx: Context) {
     // приходят без заголовка, аккаунта и признака группы.
     private data class ChatMeta(val title: String, val account: Int, val group: Boolean)
 
-    fun handle(data: Map<String, String>) {
+    // true — пуш обработан как обычно; false — сброшен как уже прочитанный
+    fun handle(data: Map<String, String>): Boolean {
         val type = data["type"]
         if (type == "CallFinished") {
             CallNotifier.finishCall(ctx, data)
-            return
+            return true
         }
+        if (type != "InboundCall" && alreadyRead(data)) return false
         if (!ChatNotifications.enabled(ctx)) {
             Log.d("KometFcm", "push dropped: notifications disabled in settings")
-            return
+            return true
         }
-        if (type == "InboundCall") CallNotifier.showIncoming(ctx, data) else showMessage(data)
+        if (type == "InboundCall") {
+            CallNotifier.showIncoming(ctx, data)
+        } else {
+            showMessage(data)
+        }
+        return true
+    }
+
+    // Пуш по Firebase может опоздать: сообщение уже пришло по прямому соединению
+    // и прочитано — уведомление не нужно. Отметка «прочитано до» лежит в
+    // chats_cache.participants, тем же способом пользуется сам экран чата.
+    // Если прямого соединения не было, отметка остаётся старой и уведомление
+    // покажется как обычно, так что «чат прочитан целиком» ничего не подавляет.
+    // Чат, открытый на экране, не проверяем: его гасит isDisplayed в showMessage,
+    // заодно убирая уже висящее уведомление.
+    private fun alreadyRead(data: Map<String, String>): Boolean {
+        val chatId = data["mc"]?.toLongOrNull() ?: 0L
+        if (chatId == 0L) return false
+        if (ChatNotifications.isDisplayed(chatId)) return false
+        val messageId = data["msgid"] ?: ""
+        if (MessageReadState.isRead(ctx, data["c"]?.toIntOrNull() ?: 0, chatId, messageId)) {
+            Log.d("KometFcm", "push dropped: message $messageId already read")
+            return true
+        }
+        return false
     }
 
     private fun manager(): NotificationManager =
