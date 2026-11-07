@@ -1349,7 +1349,8 @@ class ChatsModule {
       _messageEventsController.add(
         MessageEditedEvent(chatId, CachedMessage.fromDbRow(newRow)),
       );
-    } else if (msgIdStr != null && existing == null) {
+    } else if (msgIdStr != null &&
+        (existing == null || _isSeededFromPush(existing))) {
       final cached = await E2eeService.instance.inspect(
         CachedMessage.fromPushPayload(
           accountId,
@@ -1408,6 +1409,16 @@ class ChatsModule {
 
     await _commitChatContent([(rows.first, newRow)]);
   }
+
+  // #***! заготовка из FCM-пуша без payload — серверная версия её перезапишет
+  /// Строка, заранее засеянная нативом из FCM-пуша (PushMessageStore.kt): в ней
+  /// нет payload. Серверная версия из сокета полнее — считаем такое сообщение
+  /// новым: перезапишем строку целиком и оповестим чат как о пришедшем.
+  /// У сообщений, сохранённых Dart-кодом, payload всегда есть (fromPushPayload
+  /// и _parseMessage кладут туда весь серверный map), так что сюда попадают
+  /// только заготовки; свои неотправленные — temp_-id и не могут быть existing.
+  static bool _isSeededFromPush(Map<String, dynamic> row) =>
+      row['payload'] == null;
 
   ({int? id, String? text, int? time, bool isPreview})? _extractPinnedMessage(
     Map msg,

@@ -85,6 +85,11 @@ class KometNotifier(private val ctx: Context) {
             return true
         }
         if (type != "InboundCall" && alreadyRead(data)) return false
+        // Сообщение не читано — кладём заготовку в кэш (PushMessageStore),
+        // чтобы чат открылся с ним ещё до соединения с сервером. Это не
+        // привязано к уведомлению: при выключенных уведомлениях пуш всё
+        // равно приносит сообщение, и оно должно попасть в кэш.
+        if (type != "InboundCall") PushMessageStore.seed(ctx, data)
         if (!ChatNotifications.enabled(ctx)) {
             Log.d("KometFcm", "push dropped: notifications disabled in settings")
             return true
