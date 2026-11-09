@@ -49,6 +49,7 @@ class _AutoRequest {
   final EncryptedPhotoUrlLoader urlLoader;
   final int size;
   final Uint8List? sealedTicket;
+  final bool allowDownload;
 
   const _AutoRequest({
     required this.accountId,
@@ -57,6 +58,7 @@ class _AutoRequest {
     required this.urlLoader,
     required this.size,
     required this.sealedTicket,
+    required this.allowDownload,
   });
 }
 
@@ -119,7 +121,9 @@ class EncryptedPhotoCache {
     }
   }
 
-  // #***! запрос из пузыря, картинка уехала с экрана значит задание снимаем
+  // #***! запрос из пузыря, картинка уехала с экрана значит задание снимаем;
+  // allowDownload=false — файл не качаем: правило авто-загрузки запрещает,
+  // но уже скачанное расшифровываем и показываем
   void request({
     required int accountId,
     required int chatId,
@@ -127,6 +131,7 @@ class EncryptedPhotoCache {
     required EncryptedPhotoUrlLoader urlLoader,
     required int size,
     Uint8List? sealedTicket,
+    bool allowDownload = true,
   }) {
     if (sealedTicket == null &&
         !ChatCryptoService.instance.isEnabled(accountId, chatId)) {
@@ -145,6 +150,7 @@ class EncryptedPhotoCache {
         urlLoader: urlLoader,
         size: size,
         sealedTicket: sealedTicket,
+        allowDownload: allowDownload,
       ),
     );
     _pump();
@@ -213,6 +219,7 @@ class EncryptedPhotoCache {
         next.urlLoader,
         next.size,
         next.sealedTicket,
+        allowDownload: next.allowDownload,
       );
       unawaited(
         done.whenComplete(() {
@@ -229,8 +236,9 @@ class EncryptedPhotoCache {
     String cacheName,
     EncryptedPhotoUrlLoader urlLoader,
     int? autoSize,
-    Uint8List? sealedTicket,
-  ) {
+    Uint8List? sealedTicket, {
+    bool allowDownload = true,
+  }) {
     final key = _key(accountId, chatId, cacheName, sealedTicket);
     final generation = _generation;
     final running = _inFlight[key];
@@ -243,6 +251,7 @@ class EncryptedPhotoCache {
       autoSize,
       sealedTicket,
       generation,
+      allowDownload: allowDownload,
     );
     _inFlight[key] = future;
     unawaited(
@@ -260,8 +269,9 @@ class EncryptedPhotoCache {
     EncryptedPhotoUrlLoader urlLoader,
     int? autoSize,
     Uint8List? sealedTicket,
-    int generation,
-  ) async {
+    int generation, {
+    bool allowDownload = true,
+  }) async {
     EncryptedPhotoView view;
     try {
       view = await _decrypt(
@@ -272,6 +282,7 @@ class EncryptedPhotoCache {
         autoSize,
         sealedTicket,
         generation,
+        allowDownload: allowDownload,
       );
     } catch (e) {
       logger.w('encrypted preview $cacheName: $e');
@@ -290,8 +301,9 @@ class EncryptedPhotoCache {
     EncryptedPhotoUrlLoader urlLoader,
     int? autoSize,
     Uint8List? sealedTicket,
-    int generation,
-  ) async {
+    int generation, {
+    bool allowDownload = true,
+  }) async {
     // #***! имя расшифрованного берётся из билета, поэтому билет первым
     Uint8List? ticket;
     if (sealedTicket != null) {
@@ -319,6 +331,10 @@ class EncryptedPhotoCache {
 
     var encrypted = await MediaCache.existing(cacheName);
     if (encrypted == null) {
+      // #***! правило авто-загрузки запрещает — файл не качаем, ждём тапа
+      if (!allowDownload) {
+        return const EncryptedPhotoView.locked();
+      }
       if (autoSize != null && autoSize > _maxAutoBytes) {
         return const EncryptedPhotoView.locked();
       }

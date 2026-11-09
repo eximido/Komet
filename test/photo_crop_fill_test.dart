@@ -1,14 +1,18 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:komet/backend/modules/messages.dart';
 import 'package:komet/core/config/komet_settings.dart';
+import 'package:komet/core/media/auto_download_gate.dart';
+import 'package:komet/core/utils/media_cache.dart';
+import 'package:komet/core/utils/media_cache_names.dart';
 import 'package:komet/frontend/widgets/attachment/bubbles/edge_stretch_fill.dart';
+import 'package:komet/frontend/widgets/attachment/bubbles/network_photo.dart';
 import 'package:komet/frontend/widgets/message_bubble.dart';
 import 'package:komet/l10n/app_localizations.dart';
 import 'package:komet/models/attachment.dart';
@@ -74,13 +78,19 @@ Future<void> _pumpBubble(WidgetTester tester, CachedMessage message) async {
   await tester.pump();
 }
 
-CachedNetworkImage _networkImage(WidgetTester tester) =>
-    tester.widget<CachedNetworkImage>(find.byType(CachedNetworkImage));
+NetworkPhoto _networkImage(WidgetTester tester) =>
+    tester.widget<NetworkPhoto>(find.byType(NetworkPhoto));
 
-void _expectDecodeKeepsAspect(CachedNetworkImage image, double aspect) {
-  final ratio = image.memCacheWidth! / image.memCacheHeight!;
+void _expectDecodeKeepsAspect(NetworkPhoto image, double aspect) {
+  final ratio = image.memWidth / image.memHeight;
   expect(ratio, closeTo(aspect, aspect * 0.01));
 }
+
+const List<int> _pngHeader = [
+  0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D,
+  0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+  0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4, 0x89,
+];
 
 Future<Uint8List> _edgeTestPng() async {
   final recorder = ui.PictureRecorder();
@@ -114,11 +124,18 @@ void main() {
   setUp(() {
     cache = Directory.systemTemp.createTempSync('photo_crop_fill');
     PathProviderPlatform.instance = _SyntheticPathProvider(cache.path);
-    KometSettings.autoDownloadPhoto.value = true;
+    KometSettings.autoDownloadOf('DIALOG').photo.value = true;
+    AutoDownloadGate.reset();
+    // #***! в тестовом окружении ни сети, ни временного кэша картинок —
+    // загрузка просто висит в ожидании, свойства виджета не меняются
+    NetworkPhoto.resetForTesting();
+    NetworkPhoto.fetch = (_, _) => Completer<File?>().future;
   });
 
   tearDown(() {
-    KometSettings.autoDownloadPhoto.value = true;
+    KometSettings.autoDownloadOf('DIALOG').photo.value = true;
+    NetworkPhoto.resetForTesting();
+    MediaCache.resetForTesting();
     cache.deleteSync(recursive: true);
   });
 
@@ -144,6 +161,17 @@ void main() {
   testWidgets('a photo that would lose too much gets edge bars', (
     tester,
   ) async {
+    // #***! заливка полос берётся из постоянного кэша — греем его
+    // в реальной зоне: файловый ввод-вывод не живёт в FakeAsync
+    final url = 'https://example.com/synthetic-1080-5000.jpg';
+    final name = networkPhotoCacheName(url);
+    await tester.runAsync(() async {
+      final dir = Directory('${cache.path}/media_cache')
+        ..createSync(recursive: true);
+      File('${dir.path}/$name').writeAsBytesSync(_pngHeader);
+      await MediaCache.existing(name);
+    });
+
     await _pumpBubble(tester, _photo(1080, 5000, caption: 'подпись'));
 
     final fill = tester.widget<EdgeStretchFill>(find.byType(EdgeStretchFill));
@@ -157,8 +185,10 @@ void main() {
   testWidgets('edge bars never download a photo that waits for a tap', (
     tester,
   ) async {
-    KometSettings.autoDownloadPhoto.value = false;
+    KometSettings.autoDownloadOf('DIALOG').photo.value = false;
+    AutoDownloadGate.isCached = (_) async => false;
     await _pumpBubble(tester, _photo(1080, 5000, caption: 'подпись'));
+    await tester.pump(const Duration(milliseconds: 300));
 
     final fill = tester.widget<EdgeStretchFill>(find.byType(EdgeStretchFill));
     expect(fill.source, isNull);

@@ -3,7 +3,7 @@ import 'media_cache.dart';
 
 enum MediaCacheKind { photo, video, voice, file, kept }
 
-const List<String> _photoPrefixes = ['photo_', 'avatar_', 'audioart_'];
+const List<String> _photoPrefixes = ['photo_', 'avatar_', 'audioart_', 'img_'];
 const List<String> _videoPrefixes = [
   'video_',
   'videopreview_',
@@ -14,6 +14,11 @@ final RegExp _voiceName = RegExp(r'^-?\d+\.ogg$');
 
 String photoCacheName(PhotoAttachment photo, String url) =>
     'photo_${photo.photoId ?? (url.hashCode & 0x7fffffff)}.jpg';
+
+// #***! сетевое фото баббла в постоянном кэше: имя по урлу, гейт и миниатюры
+// знают только урл; свой префикс img_ чтобы не пересечься с photo_<photoId>
+String networkPhotoCacheName(String url) =>
+    'img_${url.hashCode & 0x7fffffff}.jpg';
 
 String avatarCacheName(String url) => 'avatar_${url.hashCode & 0x7fffffff}.jpg';
 

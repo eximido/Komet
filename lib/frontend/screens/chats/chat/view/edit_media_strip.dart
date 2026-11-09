@@ -81,7 +81,9 @@ class _EditMediaStripState extends State<EditMediaStrip> {
     }
     final url = photo.baseUrl ?? '';
     if (url.isEmpty || url.startsWith('data:')) return null;
-    return MediaCache.getOrDownload(photoCacheName(photo, url), url);
+    // #***! сначала постоянный кэш баббла (имя по урлу), потом общий
+    return await MediaCache.existing(networkPhotoCacheName(url)) ??
+        await MediaCache.getOrDownload(photoCacheName(photo, url), url);
   }
 
   void _openMenu(BuildContext anchor, EditMediaItem item) {

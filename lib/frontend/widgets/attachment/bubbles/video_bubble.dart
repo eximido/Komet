@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:komet/main.dart';
@@ -6,6 +5,7 @@ import 'package:komet/main.dart';
 import '../../../../core/media/preview_image.dart';
 import '../../../../core/utils/format.dart';
 import '../../../../core/utils/haptics.dart';
+import '../../../../core/utils/media_cache_names.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../../models/attachment.dart';
 import '../../custom_notification.dart';
@@ -17,6 +17,7 @@ import '../../photo_viewer.dart';
 import '../../text_with_meta.dart';
 import 'bubble_context.dart';
 import 'media_autoplay.dart';
+import 'network_photo.dart';
 import 'video_note_bubble.dart';
 
 class VideoBubble extends StatelessWidget {
@@ -42,6 +43,8 @@ class VideoBubble extends StatelessWidget {
         attachment: video,
         messageId: message.id,
         chatId: message.chatId,
+        chatType: ctx.chatType,
+        accountId: ctx.myId,
         sourceMessageId: ctx.sourceMessageId,
         sourceChatId: ctx.sourceChatId,
         senderId: message.senderId,
@@ -81,13 +84,12 @@ class VideoBubble extends StatelessWidget {
     );
 
     final localThumb = dataUriImage(video, video.previewData);
-    final awaitsPreviewLoad =
-        previewUrl.isNotEmpty &&
-        !previewUrl.startsWith('data:') &&
-        !AutoDownloadGate.allows(
-          KometSettings.autoDownloadVideo.value,
-          previewUrl,
-        );
+    // #***! правило видео: исключение чата важнее настройки вида чата
+    final videoRule = AutoDownloadRule.video(
+      accountId: ctx.myId,
+      chatId: ctx.chatId,
+      chatType: ctx.chatType,
+    );
     final uploading = ctx.uploadProgress;
 
     Widget previewImage() {
@@ -95,10 +97,10 @@ class VideoBubble extends StatelessWidget {
         return ListenableBuilder(
           listenable: Listenable.merge([
             AutoDownloadGate.listen(previewUrl),
-            KometSettings.autoDownloadVideo,
+            videoRule.listenable,
           ]),
           builder: (context, _) {
-            final autoDownload = KometSettings.autoDownloadVideo.value;
+            final autoDownload = videoRule.value;
             if (!AutoDownloadGate.allows(autoDownload, previewUrl)) {
               if (!AutoDownloadGate.awaitsTap(autoDownload, previewUrl)) {
                 return placeholder();
@@ -131,15 +133,15 @@ class VideoBubble extends StatelessWidget {
                 ),
               );
             }
-            return CachedNetworkImage(
-              imageUrl: previewUrl,
+            return NetworkPhoto(
+              url: previewUrl,
+              cacheName: networkPhotoCacheName(previewUrl),
               width: width,
               height: height,
-              fit: BoxFit.cover,
-              memCacheWidth: (width * dpr).round(),
-              fadeInDuration: Duration.zero,
-              placeholderFadeInDuration: Duration.zero,
-              errorWidget: (_, _, _) => localThumb == null
+              memWidth: (width * dpr).round(),
+              memHeight: (height * dpr).round(),
+              logId: video.videoId,
+              fallback: (_) => localThumb == null
                   ? placeholder()
                   : Image(
                       image: localThumb,
@@ -171,6 +173,7 @@ class VideoBubble extends StatelessWidget {
           video,
           messageId: ctx.sourceMessageId,
           chatId: ctx.sourceChatId,
+          autoDownload: videoRule,
         ),
         manualLoadKey: previewUrl.isEmpty || previewUrl.startsWith('data:')
             ? null
@@ -262,7 +265,14 @@ class VideoBubble extends StatelessWidget {
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: () {
-                    if (awaitsPreviewLoad) {
+                    // #***! проверяем правило в момент тапа, а не снапшотом
+                    // на билде: настройка могла измениться, пока баббл на экране
+                    if (previewUrl.isNotEmpty &&
+                        !previewUrl.startsWith('data:') &&
+                        !AutoDownloadGate.allows(
+                          videoRule.value,
+                          previewUrl,
+                        )) {
                       AutoDownloadGate.loadManually(previewUrl);
                       return;
                     }

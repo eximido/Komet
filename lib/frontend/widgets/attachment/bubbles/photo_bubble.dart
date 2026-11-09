@@ -24,6 +24,8 @@ import 'network_photo.dart';
 import 'video_bubble.dart';
 import '../../../../core/config/komet_settings.dart';
 import '../../../../core/media/auto_download_gate.dart';
+import '../../../../core/utils/media_cache.dart';
+import '../../../../core/utils/media_cache_names.dart';
 
 class PhotoBubble extends StatelessWidget {
   static const String gifLabel = 'GIF';
@@ -101,8 +103,21 @@ class PhotoBubble extends StatelessWidget {
         item,
         messageId: ctx.sourceMessageId,
         chatId: ctx.sourceChatId,
+        // #***! правило авто-загрузки — по чату, в котором показано сообщение
+        autoDownload: AutoDownloadRule.video(
+          accountId: ctx.myId,
+          chatId: ctx.chatId,
+          chatType: ctx.chatType,
+        ),
       ),
-      PhotoAttachment() => AutoplayClip.gif(item),
+      PhotoAttachment() => AutoplayClip.gif(
+        item,
+        autoDownload: AutoDownloadRule.photo(
+          accountId: ctx.myId,
+          chatId: ctx.chatId,
+          chatType: ctx.chatType,
+        ),
+      ),
       _ => null,
     };
     if (clip == null) return builder(context, const SizedBox.shrink(), false);
@@ -304,7 +319,7 @@ class PhotoBubble extends StatelessWidget {
                   builder: (tileContext) => GestureDetector(
                     behavior: HitTestBehavior.opaque,
                     onTap: () {
-                      if (_awaitsManualLoad(photo)) {
+                      if (_awaitsManualLoad(ctx, photo)) {
                         AutoDownloadGate.loadManually(_previewUrlOf(photo));
                         return;
                       }
@@ -401,14 +416,27 @@ class PhotoBubble extends StatelessWidget {
     }
     final url = _previewUrlOf(photo);
     if (url.isEmpty || url.startsWith('data:')) return fill(null);
+    // #***! правило фото: исключение чата важнее настройки вида чата
+    final photoRule = AutoDownloadRule.photo(
+      accountId: ctx.myId,
+      chatId: ctx.chatId,
+      chatType: ctx.chatType,
+    );
+    final cacheName = networkPhotoCacheName(url);
     return ListenableBuilder(
       listenable: Listenable.merge([
         AutoDownloadGate.listen(url),
-        KometSettings.autoDownloadPhoto,
+        photoRule.listenable,
+        // #***! файл появился в постоянном кэше — заливка подхватывает его
+        MediaCache.presence(cacheName),
       ]),
       builder: (context, _) => fill(
-        AutoDownloadGate.allows(KometSettings.autoDownloadPhoto.value, url)
-            ? _photoProvider(photo, memWidth: memWidth, memHeight: memHeight)
+        AutoDownloadGate.allows(photoRule.value, url)
+            ? _persistedPhotoProvider(
+                url,
+                memWidth: memWidth,
+                memHeight: memHeight,
+              )
             : null,
       ),
     );
@@ -467,13 +495,19 @@ class PhotoBubble extends StatelessWidget {
     if (imageUrl.isEmpty || imageUrl.startsWith('data:')) {
       return _buildPreviewImage(ctx, photo, width, height);
     }
+    // #***! правило фото: исключение чата важнее настройки вида чата
+    final photoRule = AutoDownloadRule.photo(
+      accountId: ctx.myId,
+      chatId: ctx.chatId,
+      chatType: ctx.chatType,
+    );
     return ListenableBuilder(
       listenable: Listenable.merge([
         AutoDownloadGate.listen(imageUrl),
-        KometSettings.autoDownloadPhoto,
+        photoRule.listenable,
       ]),
       builder: (context, _) {
-        final autoDownload = KometSettings.autoDownloadPhoto.value;
+        final autoDownload = photoRule.value;
         if (!AutoDownloadGate.allows(autoDownload, imageUrl)) {
           return AutoDownloadGate.awaitsTap(autoDownload, imageUrl)
               ? _manualLoadTile(ctx, photo, imageUrl, width, height)
@@ -481,6 +515,7 @@ class PhotoBubble extends StatelessWidget {
         }
         return NetworkPhoto(
           url: imageUrl,
+          cacheName: networkPhotoCacheName(imageUrl),
           width: width,
           height: height,
           memWidth: memWidth,
@@ -787,7 +822,7 @@ class PhotoBubble extends StatelessWidget {
         builder: (tileContext) => GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: () {
-            if (_awaitsManualLoad(photo)) {
+            if (_awaitsManualLoad(ctx, photo)) {
               AutoDownloadGate.loadManually(_previewUrlOf(photo));
               return;
             }
@@ -805,12 +840,17 @@ class PhotoBubble extends StatelessWidget {
     );
   }
 
-  bool _awaitsManualLoad(MessageAttachment photo) {
+  bool _awaitsManualLoad(BubbleContext ctx, MessageAttachment photo) {
     if (_localPathOf(photo) != null) return false;
     final url = _previewUrlOf(photo);
     if (url.isEmpty || url.startsWith('data:')) return false;
+    // #***! ждём тапа, если правило фото (с учётом исключения чата) выключено
     return !AutoDownloadGate.allows(
-      KometSettings.autoDownloadPhoto.value,
+      AutoDownloadRule.photo(
+        accountId: ctx.myId,
+        chatId: ctx.chatId,
+        chatType: ctx.chatType,
+      ).value,
       url,
     );
   }
@@ -843,10 +883,35 @@ class PhotoBubble extends StatelessWidget {
     if (url.isEmpty || url.startsWith('data:')) {
       return dataUriImage(photo, photo.previewData);
     }
+    // #***! герой перехода в просмотрщик: фото уже в постоянном кэше —
+    // берём оттуда, без повторной загрузки во временный кэш
+    final persisted = _persistedPhotoProvider(
+      url,
+      memWidth: memWidth,
+      memHeight: memHeight,
+    );
+    if (persisted != null) return persisted;
     return ResizeImage.resizeIfNeeded(
       memWidth,
       memHeight,
       CachedNetworkImageProvider(url),
+    );
+  }
+
+  // #***! провайдер из постоянного кэша, null если файла ещё нет:
+  // заливка letterbox ждёт пока NetworkPhoto положит файл — качать
+  // то же фото второй раз во временный кэш незачем
+  static ImageProvider? _persistedPhotoProvider(
+    String url, {
+    required int memWidth,
+    required int memHeight,
+  }) {
+    final path = MediaCache.presentPath(networkPhotoCacheName(url));
+    if (path == null) return null;
+    return ResizeImage.resizeIfNeeded(
+      memWidth,
+      memHeight,
+      FileImage(File(path)),
     );
   }
 
