@@ -5507,9 +5507,12 @@ class _ChatScreenState extends State<ChatScreen>
                           separatedBelow:
                               itemIndex + 1 < items.length &&
                               items[itemIndex + 1] is! _MessageItem,
+                          // #***! пока чат не загружен, тип берём из маршрута:
+                          // запасной 'CHAT' уводил лички и каналы в настройках
+                          // авто-загрузки на вид «группы»
                           chatType: _commentsMode
                               ? 'CHAT'
-                              : (chat?.type ?? 'CHAT'),
+                              : (chat?.type ?? widget.chatType),
                           chatId: widget.chatId,
                           photoActions: _photoActions,
                           overrideStatus: _effectiveStatus(message),

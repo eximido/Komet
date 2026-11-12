@@ -104,21 +104,33 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
     _audio.failure.addListener(_onFailure);
     TranscriptionCache.listen(_sourceMessageId, _onTranscriptionPush);
     _adoptCachedTranscription();
-    // #***! голосовые подгружаются только если правило голосовых
-    // (с учётом исключения этого чата) включено
-    if (AutoDownloadRule.voice(
+    // #***! голосовые подгружаются по правилу голосовых (с учётом исключения
+    // чата); слушаем правило — включение на лету догружает и уже видимые
+    _voiceRule = AutoDownloadRule.voice(
       accountId: widget.accountId,
       chatId: widget.chatId,
       chatType: widget.chatType,
-    ).value) {
-      unawaited(_audio.prefetch());
-    }
+    );
+    _voiceRuleListenable = _voiceRule.listenable;
+    _voiceRuleListenable.addListener(_onVoiceRuleChanged);
+    _onVoiceRuleChanged();
+  }
+
+  late final AutoDownloadRule _voiceRule;
+  late final Listenable _voiceRuleListenable;
+  bool _voicePrefetchStarted = false;
+
+  void _onVoiceRuleChanged() {
+    if (_voicePrefetchStarted || !_voiceRule.value) return;
+    _voicePrefetchStarted = true;
+    unawaited(_audio.prefetch());
   }
 
   @override
   void dispose() {
     TranscriptionCache.unlisten(_sourceMessageId, _onTranscriptionPush);
     _audio.failure.removeListener(_onFailure);
+    _voiceRuleListenable.removeListener(_onVoiceRuleChanged);
     MediaPlayback.instance.releaseVoice(_audio);
     super.dispose();
   }

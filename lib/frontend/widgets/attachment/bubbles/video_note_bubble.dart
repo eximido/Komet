@@ -142,16 +142,27 @@ class _VideoNoteBubbleState extends State<VideoNoteBubble>
       unawaited(_openLocalPreview(File(local)));
       return;
     }
-    // #***! кружок греется только если правило кружков
-    // (с учётом исключения этого чата) включено
-    if (AutoDownloadRule.videoNote(
-          accountId: widget.accountId,
-          chatId: widget.chatId,
-          chatType: widget.chatType,
-        ).value &&
-        VideoPreloader.autoLoads(widget.attachment.duration)) {
-      unawaited(_warmCache());
-    }
+    // #***! кружок греется по правилу кружков (с учётом исключения чата);
+    // слушаем правило — включение на лету догружает и уже видимые кружки
+    _noteRule = AutoDownloadRule.videoNote(
+      accountId: widget.accountId,
+      chatId: widget.chatId,
+      chatType: widget.chatType,
+    );
+    _noteRuleListenable = _noteRule.listenable;
+    _noteRuleListenable.addListener(_onNoteRuleChanged);
+    _onNoteRuleChanged();
+  }
+
+  late final AutoDownloadRule _noteRule;
+  late final Listenable _noteRuleListenable;
+  bool _noteWarmStarted = false;
+
+  void _onNoteRuleChanged() {
+    if (_noteWarmStarted || !_noteRule.value) return;
+    if (!VideoPreloader.autoLoads(widget.attachment.duration)) return;
+    _noteWarmStarted = true;
+    unawaited(_warmCache());
   }
 
   @override
@@ -169,6 +180,7 @@ class _VideoNoteBubbleState extends State<VideoNoteBubble>
     WidgetsBinding.instance.removeObserver(this);
     MediaPlayback.instance.videoNote.removeListener(_onActiveNoteChanged);
     KometSettings.autoplayVideoNote.removeListener(_onAutoplayChanged);
+    _noteRuleListenable.removeListener(_onNoteRuleChanged);
     if (_playingNote == this) _playingNote = null;
     _PreviewPool.unregister(this);
     _expand.dispose();

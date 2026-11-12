@@ -3941,6 +3941,7 @@ class _ChatListScreenState extends State<ChatListScreen>
     bool messageItalic, {
     String prefix = '',
     ChatPreviewMedia? media,
+    AutoDownloadRule? Function(bool video)? networkThumbRule,
   }) {
     if (draft != null) {
       return Text.rich(
@@ -3972,6 +3973,7 @@ class _ChatListScreenState extends State<ChatListScreen>
       ranges: messageRanges,
       media: media,
       italic: messageItalic,
+      networkThumbRule: networkThumbRule,
       style: TextStyle(
         color: cs.outline,
         fontSize: 14,
@@ -4131,6 +4133,25 @@ class _ChatListScreenState extends State<ChatListScreen>
         draft == null &&
         previewMessageId != null &&
         (previewCipherText?.isNotEmpty ?? false);
+    // #***! сетевая миниатюра строки — то же медиа сообщения, качаем только
+    // по правилу авто-загрузки этого чата (исключение важнее вида чата);
+    // без аккаунта правило просто не найдёт исключение и возьмёт флаг вида
+    final thumbChatId = int.tryParse(id);
+    final thumbAccountId = _profile?.id ?? 0;
+    final AutoDownloadRule? Function(bool video)? networkThumbRule =
+        thumbChatId == null
+        ? null
+        : (video) => video
+              ? AutoDownloadRule.video(
+                  accountId: thumbAccountId,
+                  chatId: thumbChatId,
+                  chatType: chatType,
+                )
+              : AutoDownloadRule.photo(
+                  accountId: thumbAccountId,
+                  chatId: thumbChatId,
+                  chatType: chatType,
+                );
     final Widget messageLine = canDecryptPreview
         ? DecryptedContent(
             accountId: _profile?.id ?? 0,
@@ -4146,6 +4167,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                 messageItalic,
                 prefix: previewPrefix,
                 media: previewMedia,
+                networkThumbRule: networkThumbRule,
               ),
               MessageDecryptionState.wrongKey => _buildPreviewLine(
                 cs,
@@ -4181,6 +4203,7 @@ class _ChatListScreenState extends State<ChatListScreen>
             messageItalic,
             prefix: previewPrefix,
             media: previewMedia,
+            networkThumbRule: networkThumbRule,
           );
 
     final storyOwnerId = chatType == 'DIALOG'

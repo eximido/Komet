@@ -89,10 +89,6 @@ class VideoBubble extends StatelessWidget {
       chatId: ctx.chatId,
       chatType: ctx.chatType,
     );
-    final awaitsPreviewLoad =
-        previewUrl.isNotEmpty &&
-        !previewUrl.startsWith('data:') &&
-        !AutoDownloadGate.allows(videoRule.value, previewUrl);
     final uploading = ctx.uploadProgress;
 
     Widget previewImage() {
@@ -268,7 +264,14 @@ class VideoBubble extends StatelessWidget {
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: () {
-                    if (awaitsPreviewLoad) {
+                    // #***! проверяем правило в момент тапа, а не снапшотом
+                    // на билде: настройка могла измениться, пока баббл на экране
+                    if (previewUrl.isNotEmpty &&
+                        !previewUrl.startsWith('data:') &&
+                        !AutoDownloadGate.allows(
+                          videoRule.value,
+                          previewUrl,
+                        )) {
                       AutoDownloadGate.loadManually(previewUrl);
                       return;
                     }
