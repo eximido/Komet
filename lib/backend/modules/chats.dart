@@ -15,6 +15,7 @@ import '../../core/crypto/e2ee_service.dart';
 import '../../core/media/deleted_media_keeper.dart';
 import '../../core/storage/app_database.dart';
 import '../../core/storage/chat_activity_store.dart';
+import '../../core/storage/chat_auto_download_store.dart';
 import '../../core/storage/chat_members_store.dart';
 import '../../core/storage/ghost_read_store.dart';
 import '../../core/storage/token_storage.dart';
@@ -2482,6 +2483,8 @@ class ChatsModule {
       final accountId = await TokenStorage.getActiveAccountId();
       if (accountId != null) {
         await AppDatabase.deleteChat(chatId, accountId);
+        // #***! чат удалён — исключения его авто-загрузки тоже не нужны
+        await ChatAutoDownloadStore.instance.clearForChat(accountId, chatId);
         _bump();
         _removeChatFromMemory(chatId);
       }
@@ -2534,6 +2537,8 @@ class ChatsModule {
       final accountId = await TokenStorage.getActiveAccountId();
       if (accountId != null) {
         await AppDatabase.deleteChat(chatId, accountId);
+        // #***! вышли из чата — исключения его авто-загрузки тоже не нужны
+        await ChatAutoDownloadStore.instance.clearForChat(accountId, chatId);
         _bump();
         _removeChatFromMemory(chatId);
         unawaited(_verifyLeftChat(api, accountId, chatId));

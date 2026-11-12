@@ -31,6 +31,7 @@ class VideoNoteBubble extends StatefulWidget {
   final String messageId;
   final int chatId;
   final String chatType;
+  final int accountId;
   final String? sourceMessageId;
   final int? sourceChatId;
   final int senderId;
@@ -48,6 +49,7 @@ class VideoNoteBubble extends StatefulWidget {
     required this.messageId,
     required this.chatId,
     required this.chatType,
+    required this.accountId,
     this.sourceMessageId,
     this.sourceChatId,
     required this.senderId,
@@ -140,7 +142,13 @@ class _VideoNoteBubbleState extends State<VideoNoteBubble>
       unawaited(_openLocalPreview(File(local)));
       return;
     }
-    if (KometSettings.autoDownloadOf(widget.chatType).videoNote.value &&
+    // #***! кружок греется только если правило кружков
+    // (с учётом исключения этого чата) включено
+    if (AutoDownloadRule.videoNote(
+          accountId: widget.accountId,
+          chatId: widget.chatId,
+          chatType: widget.chatType,
+        ).value &&
         VideoPreloader.autoLoads(widget.attachment.duration)) {
       unawaited(_warmCache());
     }

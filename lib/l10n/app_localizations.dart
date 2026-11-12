@@ -2534,6 +2534,48 @@ abstract class AppLocalizations {
   /// **'Downloads {joined} and {last}'**
   String chatSettingsAutoDownloadListHint(Object joined, Object last);
 
+  /// No description provided for @chatScreenMenuAutoDownload.
+  ///
+  /// In en, this message translates to:
+  /// **'Media auto-download'**
+  String get chatScreenMenuAutoDownload;
+
+  /// No description provided for @chatAutoDownloadExceptionsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Exceptions for this chat override the global auto-download settings. \"Not set\" follows the global settings.'**
+  String get chatAutoDownloadExceptionsDescription;
+
+  /// No description provided for @chatAutoDownloadStateOn.
+  ///
+  /// In en, this message translates to:
+  /// **'On'**
+  String get chatAutoDownloadStateOn;
+
+  /// No description provided for @chatAutoDownloadStateOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get chatAutoDownloadStateOff;
+
+  /// No description provided for @chatAutoDownloadStateUnset.
+  ///
+  /// In en, this message translates to:
+  /// **'Not set'**
+  String get chatAutoDownloadStateUnset;
+
+  /// No description provided for @chatAutoDownloadGlobalOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Global setting: on'**
+  String get chatAutoDownloadGlobalOn;
+
+  /// No description provided for @chatAutoDownloadGlobalOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Global setting: off'**
+  String get chatAutoDownloadGlobalOff;
+
   /// No description provided for @chatSettingsAutoDownloadPhoto.
   ///
   /// In en, this message translates to:

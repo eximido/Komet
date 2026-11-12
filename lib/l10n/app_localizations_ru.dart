@@ -1305,6 +1305,28 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
+  String get chatScreenMenuAutoDownload => 'Автозагрузка медиа';
+
+  @override
+  String get chatAutoDownloadExceptionsDescription =>
+      'Исключения для этого чата перекрывают общие настройки автозагрузки. «Не задано» — использовать общие настройки.';
+
+  @override
+  String get chatAutoDownloadStateOn => 'Включено';
+
+  @override
+  String get chatAutoDownloadStateOff => 'Выключено';
+
+  @override
+  String get chatAutoDownloadStateUnset => 'Не задано';
+
+  @override
+  String get chatAutoDownloadGlobalOn => 'Общая настройка: включена';
+
+  @override
+  String get chatAutoDownloadGlobalOff => 'Общая настройка: выключена';
+
+  @override
   String get chatSettingsAutoDownloadPhoto => 'Фото';
 
   @override

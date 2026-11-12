@@ -43,6 +43,7 @@ class VideoBubble extends StatelessWidget {
         messageId: message.id,
         chatId: message.chatId,
         chatType: ctx.chatType,
+        accountId: ctx.myId,
         sourceMessageId: ctx.sourceMessageId,
         sourceChatId: ctx.sourceChatId,
         senderId: message.senderId,
@@ -82,12 +83,16 @@ class VideoBubble extends StatelessWidget {
     );
 
     final localThumb = dataUriImage(video, video.previewData);
-    // #***! авто-загрузка видео зависит от вида чата
-    final videoAutoDownload = KometSettings.autoDownloadOf(ctx.chatType).video;
+    // #***! правило видео: исключение чата важнее настройки вида чата
+    final videoRule = AutoDownloadRule.video(
+      accountId: ctx.myId,
+      chatId: ctx.chatId,
+      chatType: ctx.chatType,
+    );
     final awaitsPreviewLoad =
         previewUrl.isNotEmpty &&
         !previewUrl.startsWith('data:') &&
-        !AutoDownloadGate.allows(videoAutoDownload.value, previewUrl);
+        !AutoDownloadGate.allows(videoRule.value, previewUrl);
     final uploading = ctx.uploadProgress;
 
     Widget previewImage() {
@@ -95,10 +100,10 @@ class VideoBubble extends StatelessWidget {
         return ListenableBuilder(
           listenable: Listenable.merge([
             AutoDownloadGate.listen(previewUrl),
-            videoAutoDownload,
+            videoRule.listenable,
           ]),
           builder: (context, _) {
-            final autoDownload = videoAutoDownload.value;
+            final autoDownload = videoRule.value;
             if (!AutoDownloadGate.allows(autoDownload, previewUrl)) {
               if (!AutoDownloadGate.awaitsTap(autoDownload, previewUrl)) {
                 return placeholder();
@@ -171,7 +176,7 @@ class VideoBubble extends StatelessWidget {
           video,
           messageId: ctx.sourceMessageId,
           chatId: ctx.sourceChatId,
-          chatType: ctx.chatType,
+          autoDownload: videoRule,
         ),
         manualLoadKey: previewUrl.isEmpty || previewUrl.startsWith('data:')
             ? null

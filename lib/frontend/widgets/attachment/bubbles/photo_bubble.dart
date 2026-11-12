@@ -101,9 +101,21 @@ class PhotoBubble extends StatelessWidget {
         item,
         messageId: ctx.sourceMessageId,
         chatId: ctx.sourceChatId,
-        chatType: ctx.chatType,
+        // #***! правило авто-загрузки — по чату, в котором показано сообщение
+        autoDownload: AutoDownloadRule.video(
+          accountId: ctx.myId,
+          chatId: ctx.chatId,
+          chatType: ctx.chatType,
+        ),
       ),
-      PhotoAttachment() => AutoplayClip.gif(item, chatType: ctx.chatType),
+      PhotoAttachment() => AutoplayClip.gif(
+        item,
+        autoDownload: AutoDownloadRule.photo(
+          accountId: ctx.myId,
+          chatId: ctx.chatId,
+          chatType: ctx.chatType,
+        ),
+      ),
       _ => null,
     };
     if (clip == null) return builder(context, const SizedBox.shrink(), false);
@@ -402,15 +414,19 @@ class PhotoBubble extends StatelessWidget {
     }
     final url = _previewUrlOf(photo);
     if (url.isEmpty || url.startsWith('data:')) return fill(null);
-    // #***! авто-загрузка фото зависит от вида чата
-    final photoAutoDownload = KometSettings.autoDownloadOf(ctx.chatType).photo;
+    // #***! правило фото: исключение чата важнее настройки вида чата
+    final photoRule = AutoDownloadRule.photo(
+      accountId: ctx.myId,
+      chatId: ctx.chatId,
+      chatType: ctx.chatType,
+    );
     return ListenableBuilder(
       listenable: Listenable.merge([
         AutoDownloadGate.listen(url),
-        photoAutoDownload,
+        photoRule.listenable,
       ]),
       builder: (context, _) => fill(
-        AutoDownloadGate.allows(photoAutoDownload.value, url)
+        AutoDownloadGate.allows(photoRule.value, url)
             ? _photoProvider(photo, memWidth: memWidth, memHeight: memHeight)
             : null,
       ),
@@ -470,15 +486,19 @@ class PhotoBubble extends StatelessWidget {
     if (imageUrl.isEmpty || imageUrl.startsWith('data:')) {
       return _buildPreviewImage(ctx, photo, width, height);
     }
-    // #***! авто-загрузка фото зависит от вида чата
-    final photoAutoDownload = KometSettings.autoDownloadOf(ctx.chatType).photo;
+    // #***! правило фото: исключение чата важнее настройки вида чата
+    final photoRule = AutoDownloadRule.photo(
+      accountId: ctx.myId,
+      chatId: ctx.chatId,
+      chatType: ctx.chatType,
+    );
     return ListenableBuilder(
       listenable: Listenable.merge([
         AutoDownloadGate.listen(imageUrl),
-        photoAutoDownload,
+        photoRule.listenable,
       ]),
       builder: (context, _) {
-        final autoDownload = photoAutoDownload.value;
+        final autoDownload = photoRule.value;
         if (!AutoDownloadGate.allows(autoDownload, imageUrl)) {
           return AutoDownloadGate.awaitsTap(autoDownload, imageUrl)
               ? _manualLoadTile(ctx, photo, imageUrl, width, height)
@@ -814,9 +834,13 @@ class PhotoBubble extends StatelessWidget {
     if (_localPathOf(photo) != null) return false;
     final url = _previewUrlOf(photo);
     if (url.isEmpty || url.startsWith('data:')) return false;
-    // #***! ждём тапа, если авто-загрузка фото выключена для этого вида чата
+    // #***! ждём тапа, если правило фото (с учётом исключения чата) выключено
     return !AutoDownloadGate.allows(
-      KometSettings.autoDownloadOf(ctx.chatType).photo.value,
+      AutoDownloadRule.photo(
+        accountId: ctx.myId,
+        chatId: ctx.chatId,
+        chatType: ctx.chatType,
+      ).value,
       url,
     );
   }

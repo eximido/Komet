@@ -36,6 +36,7 @@ class VoiceMessageBubble extends StatefulWidget {
   final String? waveData;
   final int chatId;
   final String chatType;
+  final int accountId;
   final String messageId;
   final int? sourceChatId;
   final String? sourceMessageId;
@@ -62,6 +63,7 @@ class VoiceMessageBubble extends StatefulWidget {
     this.waveData,
     required this.chatId,
     required this.chatType,
+    required this.accountId,
     required this.messageId,
     this.sourceChatId,
     this.sourceMessageId,
@@ -102,9 +104,13 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
     _audio.failure.addListener(_onFailure);
     TranscriptionCache.listen(_sourceMessageId, _onTranscriptionPush);
     _adoptCachedTranscription();
-    // #***! голосовые подгружаются только если авто-загрузка включена
-    // для того вида чата, в котором лежит сообщение
-    if (KometSettings.autoDownloadOf(widget.chatType).voice.value) {
+    // #***! голосовые подгружаются только если правило голосовых
+    // (с учётом исключения этого чата) включено
+    if (AutoDownloadRule.voice(
+      accountId: widget.accountId,
+      chatId: widget.chatId,
+      chatType: widget.chatType,
+    ).value) {
       unawaited(_audio.prefetch());
     }
   }

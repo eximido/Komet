@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../storage/chat_auto_download_store.dart';
 import 'build_profile.dart';
 
 // #***! вид чата, для которого настраивается авто-загрузка медиа
@@ -120,6 +121,89 @@ class AutoDownloadScope {
       }
     }
   }
+}
+
+// #***! правило авто-загрузки одного вида медиа в конкретном чате:
+// исключение чата (если задано) перекрывает общую настройку вида чата.
+// каждый баббл читает value и слушает listenable — они реагируют и на
+// смену общих настроек, и на смену исключения этого чата
+class AutoDownloadRule {
+  AutoDownloadRule._(this.accountId, this.chatId, this.chatType, this.media);
+
+  factory AutoDownloadRule.photo({
+    required int accountId,
+    int? chatId,
+    required String chatType,
+  }) =>
+      AutoDownloadRule._(accountId, chatId, chatType, AutoDownloadMedia.photo);
+
+  factory AutoDownloadRule.video({
+    required int accountId,
+    int? chatId,
+    required String chatType,
+  }) =>
+      AutoDownloadRule._(accountId, chatId, chatType, AutoDownloadMedia.video);
+
+  factory AutoDownloadRule.voice({
+    required int accountId,
+    int? chatId,
+    required String chatType,
+  }) =>
+      AutoDownloadRule._(accountId, chatId, chatType, AutoDownloadMedia.voice);
+
+  factory AutoDownloadRule.videoNote({
+    required int accountId,
+    int? chatId,
+    required String chatType,
+  }) => AutoDownloadRule._(
+    accountId,
+    chatId,
+    chatType,
+    AutoDownloadMedia.videoNote,
+  );
+
+  final int accountId;
+  final int? chatId;
+  final String chatType;
+  final AutoDownloadMedia media;
+
+  AutoDownloadScope get _scope => KometSettings.autoDownloadOf(chatType);
+
+  ChatAutoDownloadOverride? get _override => chatId == null
+      ? null
+      : ChatAutoDownloadStore.instance.get(accountId, chatId!);
+
+  bool? get _overrideValue => switch (media) {
+    AutoDownloadMedia.photo => _override?.photo,
+    AutoDownloadMedia.video => _override?.video,
+    AutoDownloadMedia.voice => _override?.voice,
+    AutoDownloadMedia.videoNote => _override?.videoNote,
+  };
+
+  ValueNotifier<bool> get _scopeFlag => switch (media) {
+    AutoDownloadMedia.photo => _scope.photo,
+    AutoDownloadMedia.video => _scope.video,
+    AutoDownloadMedia.voice => _scope.voice,
+    AutoDownloadMedia.videoNote => _scope.videoNote,
+  };
+
+  // #***! исключение чата важнее, без него действует настройка вида чата
+  bool get value => _overrideValue ?? _scopeFlag.value;
+
+  // #***! слушаем и флаг вида чата, и ревизию стора исключений
+  Listenable get listenable =>
+      Listenable.merge([_scopeFlag, ChatAutoDownloadStore.instance.revision]);
+
+  @override
+  bool operator ==(Object other) =>
+      other is AutoDownloadRule &&
+      other.accountId == accountId &&
+      other.chatId == chatId &&
+      other.chatType == chatType &&
+      other.media == media;
+
+  @override
+  int get hashCode => Object.hash(accountId, chatId, chatType, media);
 }
 
 // #***! фирменные настройки комета которых нет в оригинале
