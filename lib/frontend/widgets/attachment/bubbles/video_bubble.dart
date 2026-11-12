@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:komet/main.dart';
@@ -6,6 +5,7 @@ import 'package:komet/main.dart';
 import '../../../../core/media/preview_image.dart';
 import '../../../../core/utils/format.dart';
 import '../../../../core/utils/haptics.dart';
+import '../../../../core/utils/media_cache_names.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../../models/attachment.dart';
 import '../../custom_notification.dart';
@@ -17,6 +17,7 @@ import '../../photo_viewer.dart';
 import '../../text_with_meta.dart';
 import 'bubble_context.dart';
 import 'media_autoplay.dart';
+import 'network_photo.dart';
 import 'video_note_bubble.dart';
 
 class VideoBubble extends StatelessWidget {
@@ -132,15 +133,15 @@ class VideoBubble extends StatelessWidget {
                 ),
               );
             }
-            return CachedNetworkImage(
-              imageUrl: previewUrl,
+            return NetworkPhoto(
+              url: previewUrl,
+              cacheName: networkPhotoCacheName(previewUrl),
               width: width,
               height: height,
-              fit: BoxFit.cover,
-              memCacheWidth: (width * dpr).round(),
-              fadeInDuration: Duration.zero,
-              placeholderFadeInDuration: Duration.zero,
-              errorWidget: (_, _, _) => localThumb == null
+              memWidth: (width * dpr).round(),
+              memHeight: (height * dpr).round(),
+              logId: video.videoId,
+              fallback: (_) => localThumb == null
                   ? placeholder()
                   : Image(
                       image: localThumb,

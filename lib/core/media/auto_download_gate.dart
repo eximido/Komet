@@ -4,6 +4,9 @@ import 'dart:collection';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
+import '../utils/media_cache.dart';
+import '../utils/media_cache_names.dart';
+
 enum ManualLoad { unknown, missing, loaded }
 
 class _GateState extends ValueNotifier<ManualLoad> {
@@ -92,6 +95,13 @@ class AutoDownloadGate {
     state.value = cached ? ManualLoad.loaded : ManualLoad.missing;
   }
 
-  static Future<bool> _inImageCache(String key) async =>
-      await DefaultCacheManager().getFileFromCache(key) != null;
+  static Future<bool> _inImageCache(String key) async {
+    // #***! сначала постоянный кэш медиа: фото сообщений теперь живут
+    // там, а после перезапуска загруженное вручную не должно снова
+    // показываться кнопкой загрузки; временный кэш картинок — запасной
+    if (await MediaCache.existing(networkPhotoCacheName(key)) != null) {
+      return true;
+    }
+    return await DefaultCacheManager().getFileFromCache(key) != null;
+  }
 }

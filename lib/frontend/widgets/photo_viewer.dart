@@ -810,7 +810,9 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen>
     }
     final url = photo.baseUrl ?? '';
     if (url.isEmpty) return null;
-    return MediaCache.getOrDownload(_cacheNameFor(photo, url), url);
+    // #***! сначала постоянный кэш баббла (имя по урлу), потом общий
+    return await MediaCache.existing(networkPhotoCacheName(url)) ??
+        await MediaCache.getOrDownload(_cacheNameFor(photo, url), url);
   }
 
   Future<String?> _videoUrlFor(_ViewerMedia item) async {
@@ -1539,8 +1541,13 @@ class _ViewerPhoto extends StatelessWidget {
     }
     final url = photo.baseUrl ?? '';
     if (url.isEmpty) return const _BrokenPhoto();
+    // #***! фото может уже лежать в постоянном кэше (загружено бабблом) —
+    // берём оттуда, не скачивая повторно во временный кэш
+    final persisted = MediaCache.presentPath(networkPhotoCacheName(url));
     return _ProgressivePhoto(
-      image: CachedNetworkImageProvider(url),
+      image: persisted != null
+          ? FileImage(File(persisted))
+          : CachedNetworkImageProvider(url),
       placeholder: placeholder,
       fallback: const _BrokenPhoto(),
     );
@@ -1955,10 +1962,16 @@ class _VideoSurface extends StatelessWidget {
     if (url.isEmpty) {
       return const Icon(Symbols.videocam, color: Colors.white38, size: 64);
     }
-    return CachedNetworkImage(
-      imageUrl: url,
+    // #***! обложка могла быть уже сохранена бабблом в постоянный кэш
+    final persisted = url.startsWith('http')
+        ? MediaCache.presentPath(networkPhotoCacheName(url))
+        : null;
+    return Image(
+      image: persisted != null
+          ? FileImage(File(persisted))
+          : CachedNetworkImageProvider(url),
       fit: BoxFit.contain,
-      errorWidget: (_, _, _) =>
+      errorBuilder: (_, _, _) =>
           const Icon(Symbols.videocam, color: Colors.white38, size: 64),
     );
   }

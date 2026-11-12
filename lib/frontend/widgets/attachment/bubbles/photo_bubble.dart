@@ -24,6 +24,8 @@ import 'network_photo.dart';
 import 'video_bubble.dart';
 import '../../../../core/config/komet_settings.dart';
 import '../../../../core/media/auto_download_gate.dart';
+import '../../../../core/utils/media_cache.dart';
+import '../../../../core/utils/media_cache_names.dart';
 
 class PhotoBubble extends StatelessWidget {
   static const String gifLabel = 'GIF';
@@ -420,14 +422,21 @@ class PhotoBubble extends StatelessWidget {
       chatId: ctx.chatId,
       chatType: ctx.chatType,
     );
+    final cacheName = networkPhotoCacheName(url);
     return ListenableBuilder(
       listenable: Listenable.merge([
         AutoDownloadGate.listen(url),
         photoRule.listenable,
+        // #***! файл появился в постоянном кэше — заливка подхватывает его
+        MediaCache.presence(cacheName),
       ]),
       builder: (context, _) => fill(
         AutoDownloadGate.allows(photoRule.value, url)
-            ? _photoProvider(photo, memWidth: memWidth, memHeight: memHeight)
+            ? _persistedPhotoProvider(
+                url,
+                memWidth: memWidth,
+                memHeight: memHeight,
+              )
             : null,
       ),
     );
@@ -506,6 +515,7 @@ class PhotoBubble extends StatelessWidget {
         }
         return NetworkPhoto(
           url: imageUrl,
+          cacheName: networkPhotoCacheName(imageUrl),
           width: width,
           height: height,
           memWidth: memWidth,
@@ -873,10 +883,35 @@ class PhotoBubble extends StatelessWidget {
     if (url.isEmpty || url.startsWith('data:')) {
       return dataUriImage(photo, photo.previewData);
     }
+    // #***! герой перехода в просмотрщик: фото уже в постоянном кэше —
+    // берём оттуда, без повторной загрузки во временный кэш
+    final persisted = _persistedPhotoProvider(
+      url,
+      memWidth: memWidth,
+      memHeight: memHeight,
+    );
+    if (persisted != null) return persisted;
     return ResizeImage.resizeIfNeeded(
       memWidth,
       memHeight,
       CachedNetworkImageProvider(url),
+    );
+  }
+
+  // #***! провайдер из постоянного кэша, null если файла ещё нет:
+  // заливка letterbox ждёт пока NetworkPhoto положит файл — качать
+  // то же фото второй раз во временный кэш незачем
+  static ImageProvider? _persistedPhotoProvider(
+    String url, {
+    required int memWidth,
+    required int memHeight,
+  }) {
+    final path = MediaCache.presentPath(networkPhotoCacheName(url));
+    if (path == null) return null;
+    return ResizeImage.resizeIfNeeded(
+      memWidth,
+      memHeight,
+      FileImage(File(path)),
     );
   }
 

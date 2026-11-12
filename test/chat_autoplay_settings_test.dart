@@ -1,10 +1,14 @@
-import 'package:cached_network_image/cached_network_image.dart';
+import 'dart:async';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:komet/backend/modules/messages.dart';
 import 'package:komet/core/config/komet_settings.dart';
 import 'package:komet/core/storage/chat_auto_download_store.dart';
+import 'package:komet/core/utils/media_cache_names.dart';
 import 'package:komet/frontend/widgets/attachment/bubbles/media_autoplay.dart';
+import 'package:komet/frontend/widgets/attachment/bubbles/network_photo.dart';
 import 'package:komet/frontend/widgets/attachment/bubbles/photo_bubble.dart';
 import 'package:komet/frontend/widgets/lottie_image.dart';
 import 'package:komet/frontend/widgets/message_bubble.dart';
@@ -187,6 +191,10 @@ void main() {
   testWidgets('a GIF shows its badge and a still poster', (tester) async {
     addTearDown(() => KometSettings.autoplayGif.value = true);
     KometSettings.autoplayGif.value = false;
+    // #***! сеть в тестах недоступна — загрузка висит и не создаёт таймеров
+    NetworkPhoto.resetForTesting();
+    NetworkPhoto.fetch = (_, _) => Completer<File?>().future;
+    addTearDown(NetworkPhoto.resetForTesting);
     await tester.pumpWidget(
       MaterialApp(
         locale: const Locale('ru'),
@@ -220,10 +228,9 @@ void main() {
     final time = find.text('12:00');
     expect(tester.getCenter(badge).dy, closeTo(tester.getCenter(time).dy, 1));
     expect(tester.getCenter(badge).dx, lessThan(tester.getCenter(time).dx));
-    final poster = tester.widget<CachedNetworkImage>(
-      find.byType(CachedNetworkImage),
-    );
-    expect(poster.imageUrl, _gif.previewUrl);
+    final poster = tester.widget<NetworkPhoto>(find.byType(NetworkPhoto));
+    expect(poster.url, _gif.previewUrl);
+    expect(poster.cacheName, networkPhotoCacheName(_gif.previewUrl!));
   });
 
   testWidgets('animated emoji in messages follow the autoplay switch', (

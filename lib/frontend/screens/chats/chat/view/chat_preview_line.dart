@@ -7,6 +7,8 @@ import 'package:material_symbols_icons/symbols.dart';
 
 import 'package:komet/core/config/komet_settings.dart';
 import 'package:komet/core/media/auto_download_gate.dart';
+import 'package:komet/core/utils/media_cache.dart';
+import 'package:komet/core/utils/media_cache_names.dart';
 import 'package:komet/core/utils/text_format.dart';
 import 'package:komet/frontend/widgets/formatted_message_text.dart';
 import 'package:komet/models/chat_preview_media.dart';
@@ -283,6 +285,17 @@ const int _localThumbWidth = 128;
 final Map<String, ImageProvider> _thumbCache = {};
 
 ImageProvider? _thumbProvider(String source) {
+  // #***! полное фото могло уже лежать в постоянном кэше — миниатюра
+  // берётся оттуда, без скачивания во временный кэш
+  final persisted = MediaCache.presentPath(networkPhotoCacheName(source));
+  if (persisted != null) {
+    return ResizeImage(
+      FileImage(File(persisted)),
+      width: 64,
+      height: 64,
+      policy: ResizeImagePolicy.fit,
+    );
+  }
   final cached = _thumbCache[source];
   if (cached != null) return cached;
   final ImageProvider? provider;
