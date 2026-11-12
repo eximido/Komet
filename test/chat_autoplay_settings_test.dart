@@ -45,10 +45,31 @@ void main() {
         const VideoAttachment(videoId: 1, videoToken: 't', duration: 12000),
         messageId: '1',
         chatId: 2,
+        chatType: 'DIALOG',
       );
       expect(clip, isNotNull);
       expect(clip!.setting, same(KometSettings.autoplayVideo));
-      expect(clip.autoDownload, same(KometSettings.autoDownloadVideo));
+      expect(
+        clip.autoDownload,
+        same(KometSettings.autoDownloadOf('DIALOG').video),
+      );
+    });
+
+    test('binds the auto-download flag of the chat kind', () {
+      final clip = AutoplayClip.video(
+        const VideoAttachment(videoId: 1, videoToken: 't', duration: 12000),
+        messageId: '1',
+        chatId: 2,
+        chatType: 'CHANNEL',
+      );
+      expect(
+        clip!.autoDownload,
+        same(KometSettings.autoDownloadOf('CHANNEL').video),
+      );
+      expect(
+        clip.autoDownload,
+        isNot(same(KometSettings.autoDownloadOf('DIALOG').video)),
+      );
     });
 
     test('skips videos over a minute or without a duration', () {
@@ -61,6 +82,7 @@ void main() {
           ),
           messageId: '1',
           chatId: 2,
+          chatType: 'DIALOG',
         ),
         isNull,
       );
@@ -69,6 +91,7 @@ void main() {
           const VideoAttachment(videoId: 1, videoToken: 't'),
           messageId: '1',
           chatId: 2,
+          chatType: 'DIALOG',
         ),
         isNull,
       );
@@ -80,6 +103,7 @@ void main() {
           const VideoAttachment(duration: 5000),
           messageId: '1',
           chatId: 2,
+          chatType: 'DIALOG',
         ),
         isNull,
       );
@@ -88,16 +112,20 @@ void main() {
           const VideoAttachment(duration: 5000, localPath: '/tmp/clip.mp4'),
           messageId: '1',
           chatId: 2,
+          chatType: 'DIALOG',
         )?.localPath,
         '/tmp/clip.mp4',
       );
     });
 
     test('plays a GIF from its mp4 under the GIF switch', () async {
-      final clip = AutoplayClip.gif(_gif);
+      final clip = AutoplayClip.gif(_gif, chatType: 'DIALOG');
       expect(clip, isNotNull);
       expect(clip!.setting, same(KometSettings.autoplayGif));
-      expect(clip.autoDownload, same(KometSettings.autoDownloadPhoto));
+      expect(
+        clip.autoDownload,
+        same(KometSettings.autoDownloadOf('DIALOG').photo),
+      );
       expect(await clip.resolveUrl!(), _gif.mp4Url);
     });
 
@@ -105,6 +133,7 @@ void main() {
       expect(
         AutoplayClip.gif(
           const PhotoAttachment(photoId: 5, baseUrl: 'https://e.test/p.jpg'),
+          chatType: 'DIALOG',
         ),
         isNull,
       );

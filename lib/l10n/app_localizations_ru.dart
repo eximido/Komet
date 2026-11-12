@@ -1279,6 +1279,32 @@ class AppLocalizationsRu extends AppLocalizations {
   String get chatSettingsAutoDownloadTitle => 'Автозагрузка медиа';
 
   @override
+  String get chatSettingsAutoDownloadPrivateChats => 'Личные чаты';
+
+  @override
+  String get chatSettingsAutoDownloadGroupChats => 'Групповые чаты';
+
+  @override
+  String get chatSettingsAutoDownloadChannels => 'Каналы';
+
+  @override
+  String get chatSettingsAutoDownloadAllMediaHint =>
+      'Загружаются все медиафайлы';
+
+  @override
+  String get chatSettingsAutoDownloadNothingHint => 'Ничего не загружается';
+
+  @override
+  String chatSettingsAutoDownloadOnlyHint(Object type1) {
+    return 'Загружаются только $type1';
+  }
+
+  @override
+  String chatSettingsAutoDownloadListHint(Object joined, Object last) {
+    return 'Загружаются $joined и $last';
+  }
+
+  @override
   String get chatSettingsAutoDownloadPhoto => 'Фото';
 
   @override

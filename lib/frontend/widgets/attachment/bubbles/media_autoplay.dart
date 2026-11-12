@@ -41,6 +41,7 @@ class AutoplayClip {
     VideoAttachment video, {
     required String messageId,
     required int chatId,
+    required String chatType,
   }) {
     final duration = video.duration;
     if (duration == null || duration <= 0 || duration > maxVideoDurationMs) {
@@ -63,11 +64,12 @@ class AutoplayClip {
             ),
       frameSize: _sizeOf(video.width, video.height),
       setting: KometSettings.autoplayVideo,
-      autoDownload: KometSettings.autoDownloadVideo,
+      // #***! авто-загрузка зависит от вида чата, в котором лежит видео
+      autoDownload: KometSettings.autoDownloadOf(chatType).video,
     );
   }
 
-  static AutoplayClip? gif(PhotoAttachment photo) {
+  static AutoplayClip? gif(PhotoAttachment photo, {required String chatType}) {
     final url = photo.mp4Url;
     final photoId = photo.photoId;
     if (!photo.isGif || url == null || url.isEmpty || photoId == null) {
@@ -78,7 +80,8 @@ class AutoplayClip {
       resolveUrl: () async => url,
       frameSize: _sizeOf(photo.width, photo.height),
       setting: KometSettings.autoplayGif,
-      autoDownload: KometSettings.autoDownloadPhoto,
+      // #***! гифки едут по флагу фото того вида чата, где лежит сообщение
+      autoDownload: KometSettings.autoDownloadOf(chatType).photo,
     );
   }
 

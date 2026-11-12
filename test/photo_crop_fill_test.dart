@@ -114,11 +114,11 @@ void main() {
   setUp(() {
     cache = Directory.systemTemp.createTempSync('photo_crop_fill');
     PathProviderPlatform.instance = _SyntheticPathProvider(cache.path);
-    KometSettings.autoDownloadPhoto.value = true;
+    KometSettings.autoDownloadOf('DIALOG').photo.value = true;
   });
 
   tearDown(() {
-    KometSettings.autoDownloadPhoto.value = true;
+    KometSettings.autoDownloadOf('DIALOG').photo.value = true;
     cache.deleteSync(recursive: true);
   });
 
@@ -157,7 +157,7 @@ void main() {
   testWidgets('edge bars never download a photo that waits for a tap', (
     tester,
   ) async {
-    KometSettings.autoDownloadPhoto.value = false;
+    KometSettings.autoDownloadOf('DIALOG').photo.value = false;
     await _pumpBubble(tester, _photo(1080, 5000, caption: 'подпись'));
 
     final fill = tester.widget<EdgeStretchFill>(find.byType(EdgeStretchFill));

@@ -1275,6 +1275,32 @@ class AppLocalizationsEn extends AppLocalizations {
   String get chatSettingsAutoDownloadTitle => 'Media auto-download';
 
   @override
+  String get chatSettingsAutoDownloadPrivateChats => 'Private chats';
+
+  @override
+  String get chatSettingsAutoDownloadGroupChats => 'Group chats';
+
+  @override
+  String get chatSettingsAutoDownloadChannels => 'Channels';
+
+  @override
+  String get chatSettingsAutoDownloadAllMediaHint =>
+      'Downloads all media automatically';
+
+  @override
+  String get chatSettingsAutoDownloadNothingHint => 'Downloads nothing';
+
+  @override
+  String chatSettingsAutoDownloadOnlyHint(Object type1) {
+    return 'Downloads only $type1';
+  }
+
+  @override
+  String chatSettingsAutoDownloadListHint(Object joined, Object last) {
+    return 'Downloads $joined and $last';
+  }
+
+  @override
   String get chatSettingsAutoDownloadPhoto => 'Photos';
 
   @override

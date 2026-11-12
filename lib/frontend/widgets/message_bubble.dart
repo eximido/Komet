@@ -2817,6 +2817,7 @@ class MessageBubble extends StatelessWidget {
       cs: ctx.cs,
       waveData: audio?.waveform,
       chatId: message.chatId,
+      chatType: ctx.chatType,
       messageId: message.id,
       sourceChatId: ctx.sourceChatId,
       sourceMessageId: ctx.sourceMessageId,

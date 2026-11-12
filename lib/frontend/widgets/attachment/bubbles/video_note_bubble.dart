@@ -30,6 +30,7 @@ class VideoNoteBubble extends StatefulWidget {
   final VideoAttachment attachment;
   final String messageId;
   final int chatId;
+  final String chatType;
   final String? sourceMessageId;
   final int? sourceChatId;
   final int senderId;
@@ -46,6 +47,7 @@ class VideoNoteBubble extends StatefulWidget {
     required this.attachment,
     required this.messageId,
     required this.chatId,
+    required this.chatType,
     this.sourceMessageId,
     this.sourceChatId,
     required this.senderId,
@@ -138,7 +140,7 @@ class _VideoNoteBubbleState extends State<VideoNoteBubble>
       unawaited(_openLocalPreview(File(local)));
       return;
     }
-    if (KometSettings.autoDownloadVideoNote.value &&
+    if (KometSettings.autoDownloadOf(widget.chatType).videoNote.value &&
         VideoPreloader.autoLoads(widget.attachment.duration)) {
       unawaited(_warmCache());
     }

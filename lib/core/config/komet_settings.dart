@@ -3,6 +3,125 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'build_profile.dart';
 
+// #***! вид чата, для которого настраивается авто-загрузка медиа
+enum AutoDownloadKind { dialog, group, channel }
+
+// #***! серверный тип чата -> вид авто-загрузки, неизвестное считаем личкой
+AutoDownloadKind autoDownloadKindOf(String chatType) => switch (chatType) {
+  'CHANNEL' => AutoDownloadKind.channel,
+  'CHAT' || 'GROUP' => AutoDownloadKind.group,
+  _ => AutoDownloadKind.dialog,
+};
+
+// #***! авто-загрузка одного вида чата: включённый мастер форсирует все
+// флаги во включённом состоянии, а выключенный сбрасывает их в off и
+// раскрывает меню, из которого включается только нужное
+class AutoDownloadScope {
+  AutoDownloadScope(this.kind);
+
+  final AutoDownloadKind kind;
+  final ValueNotifier<bool> master = ValueNotifier(true);
+  final ValueNotifier<bool> photo = ValueNotifier(true);
+  final ValueNotifier<bool> video = ValueNotifier(true);
+  final ValueNotifier<bool> voice = ValueNotifier(true);
+  final ValueNotifier<bool> videoNote = ValueNotifier(true);
+
+  String _key(String flag) => 'komet_auto_download_${kind.name}_$flag';
+
+  Map<ValueNotifier<bool>, String> get _flags => {
+    photo: 'photo',
+    video: 'video',
+    voice: 'voice',
+    videoNote: 'video_note',
+  };
+
+  // #***! выбраны ли все типы медиа — сводка в этом случае показывает
+  // общий текст «загружаются все медиафайлы», а не перечисление
+  bool get allFlagsOn =>
+      photo.value && video.value && voice.value && videoNote.value;
+
+  // #***! читаем свои ключи, а если их ещё нет — наследуем старые
+  // глобальные переключатели, действовавшие на все чаты сразу
+  Future<void> load(
+    SharedPreferences prefs, {
+    bool? legacyPhoto,
+    bool? legacyVideo,
+    bool? legacyVoice,
+    bool? legacyVideoNote,
+  }) async {
+    final legacyAllOn = [
+      legacyPhoto,
+      legacyVideo,
+      legacyVoice,
+      legacyVideoNote,
+    ].every((value) => value ?? true);
+    master.value = prefs.getBool(_key('master')) ?? legacyAllOn;
+    photo.value = prefs.getBool(_key('photo')) ?? legacyPhoto ?? true;
+    video.value = prefs.getBool(_key('video')) ?? legacyVideo ?? true;
+    voice.value = prefs.getBool(_key('voice')) ?? legacyVoice ?? true;
+    videoNote.value =
+        prefs.getBool(_key('video_note')) ?? legacyVideoNote ?? true;
+    // #***! включённый мастер всегда подразумевает все флаги включёнными
+    if (master.value) await _forceAll(prefs, true);
+  }
+
+  // #***! мастер выключен, но все опции включены — это то же самое, что
+  // включённый мастер; при следующем заходе в настройки возвращаем мастер,
+  // иначе он висит выключенным при полностью включённых опциях
+  Future<void> normalize() async {
+    if (master.value || !allFlagsOn) return;
+    await setMaster(true);
+  }
+
+  // #***! включение мастера включает все типы сразу, выключение наоборот
+  // сбрасывает всё в off: пользователь включает только нужное с нуля
+  Future<void> setMaster(bool value) async {
+    master.value = value;
+    // память сразу — раскрытое меню показывает новые значения без прыжков
+    final changed = <String>[];
+    for (final entry in _flags.entries) {
+      if (entry.key.value != value) {
+        entry.key.value = value;
+        changed.add(entry.value);
+      }
+    }
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_key('master'), value);
+    for (final flag in changed) {
+      await prefs.setBool(_key(flag), value);
+    }
+  }
+
+  Future<void> setPhoto(bool value) => _setFlag(photo, 'photo', value);
+
+  Future<void> setVideo(bool value) => _setFlag(video, 'video', value);
+
+  Future<void> setVoice(bool value) => _setFlag(voice, 'voice', value);
+
+  Future<void> setVideoNote(bool value) =>
+      _setFlag(videoNote, 'video_note', value);
+
+  // #***! память сразу, диск потом
+  Future<void> _setFlag(
+    ValueNotifier<bool> notifier,
+    String flag,
+    bool value,
+  ) async {
+    notifier.value = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_key(flag), value);
+  }
+
+  Future<void> _forceAll(SharedPreferences prefs, bool value) async {
+    for (final entry in _flags.entries) {
+      if (entry.key.value != value) {
+        entry.key.value = value;
+        await prefs.setBool(_key(entry.value), value);
+      }
+    }
+  }
+}
+
 // #***! фирменные настройки комета которых нет в оригинале
 class KometSettings {
   static const _kViewDeleted = 'komet_view_deleted';
@@ -17,6 +136,7 @@ class KometSettings {
   static const _kHideAllChatsFolder = 'komet_hide_all_chats_folder';
   static const _kShowHiddenChats = 'komet_show_hidden_chats';
   static const _kArchiveOnPull = 'komet_archive_on_pull';
+  // #***! старые глобальные ключи авто-загрузки, читаются только для миграции
   static const _kAutoDownloadPhoto = 'komet_auto_download_photo';
   static const _kAutoDownloadVideo = 'komet_auto_download_video';
   static const _kAutoDownloadVoice = 'komet_auto_download_voice';
@@ -43,10 +163,15 @@ class KometSettings {
   static final ValueNotifier<bool> hideAllChatsFolder = ValueNotifier(false);
   static final ValueNotifier<bool> showHiddenChats = ValueNotifier(false);
   static final ValueNotifier<bool> archiveOnPull = ValueNotifier(false);
-  static final ValueNotifier<bool> autoDownloadPhoto = ValueNotifier(true);
-  static final ValueNotifier<bool> autoDownloadVideo = ValueNotifier(true);
-  static final ValueNotifier<bool> autoDownloadVoice = ValueNotifier(true);
-  static final ValueNotifier<bool> autoDownloadVideoNote = ValueNotifier(true);
+  // #***! авто-загрузка медиа настраивается отдельно для каждого вида чата
+  static final Map<AutoDownloadKind, AutoDownloadScope> autoDownloadScopes = {
+    for (final kind in AutoDownloadKind.values) kind: AutoDownloadScope(kind),
+  };
+
+  // #***! скоуп авто-загрузки по серверному типу чата
+  static AutoDownloadScope autoDownloadOf(String chatType) =>
+      autoDownloadScopes[autoDownloadKindOf(chatType)]!;
+
   static final ValueNotifier<bool> autoplayVideo = ValueNotifier(true);
   static final ValueNotifier<bool> autoplayGif = ValueNotifier(true);
   static final ValueNotifier<bool> autoplayAnimoji = ValueNotifier(true);
@@ -83,11 +208,16 @@ class KometSettings {
     hideAllChatsFolder.value = prefs.getBool(_kHideAllChatsFolder) ?? false;
     showHiddenChats.value = prefs.getBool(_kShowHiddenChats) ?? false;
     archiveOnPull.value = prefs.getBool(_kArchiveOnPull) ?? false;
-    autoDownloadPhoto.value = prefs.getBool(_kAutoDownloadPhoto) ?? true;
-    autoDownloadVideo.value = prefs.getBool(_kAutoDownloadVideo) ?? true;
-    autoDownloadVoice.value = prefs.getBool(_kAutoDownloadVoice) ?? true;
-    autoDownloadVideoNote.value =
-        prefs.getBool(_kAutoDownloadVideoNote) ?? true;
+    // #***! авто-загрузка: старые глобальные флаги раздаём всем видам чатов
+    for (final scope in autoDownloadScopes.values) {
+      await scope.load(
+        prefs,
+        legacyPhoto: prefs.getBool(_kAutoDownloadPhoto),
+        legacyVideo: prefs.getBool(_kAutoDownloadVideo),
+        legacyVoice: prefs.getBool(_kAutoDownloadVoice),
+        legacyVideoNote: prefs.getBool(_kAutoDownloadVideoNote),
+      );
+    }
     autoplayVideo.value = prefs.getBool(_kAutoplayVideo) ?? true;
     autoplayGif.value = prefs.getBool(_kAutoplayGif) ?? true;
     autoplayAnimoji.value = prefs.getBool(_kAutoplayAnimoji) ?? true;
@@ -163,18 +293,6 @@ class KometSettings {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_kHideAllChatsFolder, value);
   }
-
-  static Future<void> setAutoDownloadPhoto(bool value) =>
-      _setFlag(autoDownloadPhoto, _kAutoDownloadPhoto, value);
-
-  static Future<void> setAutoDownloadVideo(bool value) =>
-      _setFlag(autoDownloadVideo, _kAutoDownloadVideo, value);
-
-  static Future<void> setAutoDownloadVoice(bool value) =>
-      _setFlag(autoDownloadVoice, _kAutoDownloadVoice, value);
-
-  static Future<void> setAutoDownloadVideoNote(bool value) =>
-      _setFlag(autoDownloadVideoNote, _kAutoDownloadVideoNote, value);
 
   static Future<void> setAutoplayVideo(bool value) =>
       _setFlag(autoplayVideo, _kAutoplayVideo, value);

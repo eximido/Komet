@@ -101,8 +101,9 @@ class PhotoBubble extends StatelessWidget {
         item,
         messageId: ctx.sourceMessageId,
         chatId: ctx.sourceChatId,
+        chatType: ctx.chatType,
       ),
-      PhotoAttachment() => AutoplayClip.gif(item),
+      PhotoAttachment() => AutoplayClip.gif(item, chatType: ctx.chatType),
       _ => null,
     };
     if (clip == null) return builder(context, const SizedBox.shrink(), false);
@@ -304,7 +305,7 @@ class PhotoBubble extends StatelessWidget {
                   builder: (tileContext) => GestureDetector(
                     behavior: HitTestBehavior.opaque,
                     onTap: () {
-                      if (_awaitsManualLoad(photo)) {
+                      if (_awaitsManualLoad(ctx, photo)) {
                         AutoDownloadGate.loadManually(_previewUrlOf(photo));
                         return;
                       }
@@ -401,13 +402,15 @@ class PhotoBubble extends StatelessWidget {
     }
     final url = _previewUrlOf(photo);
     if (url.isEmpty || url.startsWith('data:')) return fill(null);
+    // #***! авто-загрузка фото зависит от вида чата
+    final photoAutoDownload = KometSettings.autoDownloadOf(ctx.chatType).photo;
     return ListenableBuilder(
       listenable: Listenable.merge([
         AutoDownloadGate.listen(url),
-        KometSettings.autoDownloadPhoto,
+        photoAutoDownload,
       ]),
       builder: (context, _) => fill(
-        AutoDownloadGate.allows(KometSettings.autoDownloadPhoto.value, url)
+        AutoDownloadGate.allows(photoAutoDownload.value, url)
             ? _photoProvider(photo, memWidth: memWidth, memHeight: memHeight)
             : null,
       ),
@@ -467,13 +470,15 @@ class PhotoBubble extends StatelessWidget {
     if (imageUrl.isEmpty || imageUrl.startsWith('data:')) {
       return _buildPreviewImage(ctx, photo, width, height);
     }
+    // #***! авто-загрузка фото зависит от вида чата
+    final photoAutoDownload = KometSettings.autoDownloadOf(ctx.chatType).photo;
     return ListenableBuilder(
       listenable: Listenable.merge([
         AutoDownloadGate.listen(imageUrl),
-        KometSettings.autoDownloadPhoto,
+        photoAutoDownload,
       ]),
       builder: (context, _) {
-        final autoDownload = KometSettings.autoDownloadPhoto.value;
+        final autoDownload = photoAutoDownload.value;
         if (!AutoDownloadGate.allows(autoDownload, imageUrl)) {
           return AutoDownloadGate.awaitsTap(autoDownload, imageUrl)
               ? _manualLoadTile(ctx, photo, imageUrl, width, height)
@@ -787,7 +792,7 @@ class PhotoBubble extends StatelessWidget {
         builder: (tileContext) => GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: () {
-            if (_awaitsManualLoad(photo)) {
+            if (_awaitsManualLoad(ctx, photo)) {
               AutoDownloadGate.loadManually(_previewUrlOf(photo));
               return;
             }
@@ -805,12 +810,13 @@ class PhotoBubble extends StatelessWidget {
     );
   }
 
-  bool _awaitsManualLoad(MessageAttachment photo) {
+  bool _awaitsManualLoad(BubbleContext ctx, MessageAttachment photo) {
     if (_localPathOf(photo) != null) return false;
     final url = _previewUrlOf(photo);
     if (url.isEmpty || url.startsWith('data:')) return false;
+    // #***! ждём тапа, если авто-загрузка фото выключена для этого вида чата
     return !AutoDownloadGate.allows(
-      KometSettings.autoDownloadPhoto.value,
+      KometSettings.autoDownloadOf(ctx.chatType).photo.value,
       url,
     );
   }

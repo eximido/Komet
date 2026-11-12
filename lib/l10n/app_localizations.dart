@@ -2492,6 +2492,48 @@ abstract class AppLocalizations {
   /// **'Media auto-download'**
   String get chatSettingsAutoDownloadTitle;
 
+  /// No description provided for @chatSettingsAutoDownloadPrivateChats.
+  ///
+  /// In en, this message translates to:
+  /// **'Private chats'**
+  String get chatSettingsAutoDownloadPrivateChats;
+
+  /// No description provided for @chatSettingsAutoDownloadGroupChats.
+  ///
+  /// In en, this message translates to:
+  /// **'Group chats'**
+  String get chatSettingsAutoDownloadGroupChats;
+
+  /// No description provided for @chatSettingsAutoDownloadChannels.
+  ///
+  /// In en, this message translates to:
+  /// **'Channels'**
+  String get chatSettingsAutoDownloadChannels;
+
+  /// No description provided for @chatSettingsAutoDownloadAllMediaHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloads all media automatically'**
+  String get chatSettingsAutoDownloadAllMediaHint;
+
+  /// No description provided for @chatSettingsAutoDownloadNothingHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloads nothing'**
+  String get chatSettingsAutoDownloadNothingHint;
+
+  /// No description provided for @chatSettingsAutoDownloadOnlyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloads only {type1}'**
+  String chatSettingsAutoDownloadOnlyHint(Object type1);
+
+  /// No description provided for @chatSettingsAutoDownloadListHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloads {joined} and {last}'**
+  String chatSettingsAutoDownloadListHint(Object joined, Object last);
+
   /// No description provided for @chatSettingsAutoDownloadPhoto.
   ///
   /// In en, this message translates to:

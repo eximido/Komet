@@ -42,6 +42,7 @@ class VideoBubble extends StatelessWidget {
         attachment: video,
         messageId: message.id,
         chatId: message.chatId,
+        chatType: ctx.chatType,
         sourceMessageId: ctx.sourceMessageId,
         sourceChatId: ctx.sourceChatId,
         senderId: message.senderId,
@@ -81,13 +82,12 @@ class VideoBubble extends StatelessWidget {
     );
 
     final localThumb = dataUriImage(video, video.previewData);
+    // #***! авто-загрузка видео зависит от вида чата
+    final videoAutoDownload = KometSettings.autoDownloadOf(ctx.chatType).video;
     final awaitsPreviewLoad =
         previewUrl.isNotEmpty &&
         !previewUrl.startsWith('data:') &&
-        !AutoDownloadGate.allows(
-          KometSettings.autoDownloadVideo.value,
-          previewUrl,
-        );
+        !AutoDownloadGate.allows(videoAutoDownload.value, previewUrl);
     final uploading = ctx.uploadProgress;
 
     Widget previewImage() {
@@ -95,10 +95,10 @@ class VideoBubble extends StatelessWidget {
         return ListenableBuilder(
           listenable: Listenable.merge([
             AutoDownloadGate.listen(previewUrl),
-            KometSettings.autoDownloadVideo,
+            videoAutoDownload,
           ]),
           builder: (context, _) {
-            final autoDownload = KometSettings.autoDownloadVideo.value;
+            final autoDownload = videoAutoDownload.value;
             if (!AutoDownloadGate.allows(autoDownload, previewUrl)) {
               if (!AutoDownloadGate.awaitsTap(autoDownload, previewUrl)) {
                 return placeholder();
@@ -171,6 +171,7 @@ class VideoBubble extends StatelessWidget {
           video,
           messageId: ctx.sourceMessageId,
           chatId: ctx.sourceChatId,
+          chatType: ctx.chatType,
         ),
         manualLoadKey: previewUrl.isEmpty || previewUrl.startsWith('data:')
             ? null
