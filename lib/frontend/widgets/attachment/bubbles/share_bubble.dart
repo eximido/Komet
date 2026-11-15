@@ -110,35 +110,36 @@ class ShareBubble extends StatelessWidget {
       ),
     );
 
+    final Widget column = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (hasText) ...[
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: FormattedMessageText(
+              text: text!,
+              ranges: ctx.contentFormatRanges,
+              style: TextStyle(color: ctx.text, fontSize: 16, height: 1.3),
+            ),
+          ),
+          const SizedBox(height: 6),
+        ],
+        card,
+        ctx.meta(),
+      ],
+    );
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(8, 6, 8, 4),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 280),
-        child: IntrinsicWidth(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (hasText) ...[
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: FormattedMessageText(
-                    text: text!,
-                    ranges: ctx.contentFormatRanges,
-                    style: TextStyle(
-                      color: ctx.text,
-                      fontSize: 16,
-                      height: 1.3,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 6),
-              ],
-              card,
-              ctx.meta(),
-            ],
-          ),
-        ),
+        // В ленте канала превью ссылки разворачивается на ширину поста
+        constraints: BoxConstraints(maxWidth: ctx.channelFeedWidth ?? 280),
+        // В обычных чатах карточка сжимается под содержимое, в ленте —
+        // занимает всю ширину поста
+        child: ctx.channelFeedWidth == null
+            ? IntrinsicWidth(child: column)
+            : column,
       ),
     );
   }

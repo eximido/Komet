@@ -73,6 +73,11 @@ class BubbleContext {
   static const double captionPaddingTop = 6.0;
   static const double compactTimePadding = 8.0;
 
+  /// Ширина, которую список сообщений резервирует слева в режиме выделения
+  /// (кружок-чекбокс и сдвиг строки). Лента каналов держит такой же запас
+  /// справа, чтобы при входе в выделение текст поста не переносился.
+  static const double selectionGutterWidth = 40.0;
+
   final BuildContext context;
   final ColorScheme cs;
   final Color text;
@@ -104,6 +109,11 @@ class BubbleContext {
   final bool likelyForwarded;
   final Widget Function(Widget)? selectable;
 
+  /// Фиксированная ширина контента поста канальной ленты. Не null только для
+  /// постов канала: блок поста растягивается на неё целиком, а иллюстрации и
+  /// подписи компонуются внутри, не диктуя свою ширину сообщению.
+  final double? channelFeedWidth;
+
   BubbleContext({
     required this.context,
     required this.cs,
@@ -133,6 +143,7 @@ class BubbleContext {
     this.metaInFooter = false,
     this.likelyForwarded = false,
     this.selectable,
+    this.channelFeedWidth,
   }) : dim = text.withValues(alpha: 0.7),
        showsStatus = showsStatus ?? isMe;
 
@@ -175,6 +186,7 @@ class BubbleContext {
     metaInFooter: metaInFooter,
     likelyForwarded: likelyForwarded,
     selectable: selectable,
+    channelFeedWidth: channelFeedWidth,
   );
 
   String get clockText {

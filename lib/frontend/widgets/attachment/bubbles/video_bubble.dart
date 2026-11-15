@@ -26,7 +26,13 @@ class VideoBubble extends StatelessWidget {
 
   const VideoBubble({super.key, required this.ctx, required this.video});
 
-  static double layoutWidth(VideoAttachment video, {bool hasCaption = false}) {
+  static double layoutWidth(
+    VideoAttachment video, {
+    bool hasCaption = false,
+    double? feedWidth,
+  }) {
+    // В ленте канала видео занимает всю ширину поста и не сжимает подпись
+    if (feedWidth != null && feedWidth > 0) return feedWidth;
     return (video.width?.toDouble() ?? 200.0).clamp(
       hasCaption
           ? BubbleContext.captionedMediaMinWidth
@@ -69,7 +75,11 @@ class VideoBubble extends StatelessWidget {
         : (video.previewData ?? '');
 
     final h = video.height;
-    final width = layoutWidth(video, hasCaption: hasCaption);
+    final width = layoutWidth(
+      video,
+      hasCaption: hasCaption,
+      feedWidth: ctx.channelFeedWidth,
+    );
     final height = (h?.toDouble() ?? 150.0).clamp(
       BubbleContext.photoMinSize,
       BubbleContext.photoMaxSize,

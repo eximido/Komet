@@ -28,6 +28,7 @@ import 'package:komet/frontend/widgets/reaction_picker.dart'
     show availableReactions;
 import 'package:komet/frontend/widgets/rich_message_controller.dart';
 import 'package:komet/frontend/widgets/custom_notification.dart';
+import 'package:komet/frontend/widgets/attachment/bubbles/bubble_context.dart';
 import 'package:komet/frontend/widgets/format_selection_toolbar.dart';
 import 'package:komet/frontend/widgets/selection_check_circle.dart';
 import 'package:komet/frontend/widgets/small_spinner.dart';
@@ -306,7 +307,9 @@ class SelectableMessageRow extends StatefulWidget {
 }
 
 class _SelectableMessageRowState extends State<SelectableMessageRow> {
-  static const double _gutterWidth = 40;
+  // Гутер выделения: блок сообщения сдвигается на него вправо, слева
+  // появляется кружок. Лента каналов держит такой же запас справа.
+  static const double _gutterWidth = BubbleContext.selectionGutterWidth;
 
   final GlobalKey _boundaryKey = GlobalKey();
   Offset? _lastTapDown;
