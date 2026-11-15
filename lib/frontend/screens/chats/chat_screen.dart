@@ -144,6 +144,7 @@ import '../../widgets/chat_wallpaper_view.dart' show WallpaperImages;
 import 'scheduled_messages_screen.dart';
 import 'chat_encryption_screen.dart';
 import 'e2ee_screen.dart';
+import 'chat_auto_download_settings_screen.dart';
 import 'chat_wallpaper_preview_screen.dart';
 import 'profile_action_sheets.dart';
 import '../../../core/media/media_playback.dart';
@@ -3871,6 +3872,12 @@ class _ChatScreenState extends State<ChatScreen>
           label: l10n.chatScreenMenuChangeWallpaper,
           onTap: _openWallpaperSheet,
         ),
+        // #***! исключения авто-загрузки для конкретно этого чата
+        ChatMenuItem(
+          icon: Symbols.download,
+          label: l10n.chatScreenMenuAutoDownload,
+          onTap: () => unawaited(_openAutoDownloadSettings()),
+        ),
         ChatMenuItem(
           icon: Symbols.mop,
           label: l10n.chatInfoMenuClearHistory,
@@ -4049,6 +4056,20 @@ class _ChatScreenState extends State<ChatScreen>
     if (!mounted) return;
     final wp = _effectiveWallpaper(_myId);
     if (!identical(wp, _wallpaper)) setState(() => _wallpaper = wp);
+  }
+
+  Future<void> _openAutoDownloadSettings() {
+    // #***! исключения авто-загрузки конкретно для этого чата,
+    // вид чата берём актуальный на момент открытия
+    if (_myId == 0) return Future.value();
+    return pushSwipeable(
+      context,
+      (context) => ChatAutoDownloadSettingsScreen(
+        accountId: _myId,
+        chatId: widget.chatId,
+        chatType: chat?.type ?? widget.chatType,
+      ),
+    );
   }
 
   Future<void> _openWallpaperSheet() async {
@@ -5486,9 +5507,12 @@ class _ChatScreenState extends State<ChatScreen>
                           separatedBelow:
                               itemIndex + 1 < items.length &&
                               items[itemIndex + 1] is! _MessageItem,
+                          // #***! пока чат не загружен, тип берём из маршрута:
+                          // запасной 'CHAT' уводил лички и каналы в настройках
+                          // авто-загрузки на вид «группы»
                           chatType: _commentsMode
                               ? 'CHAT'
-                              : (chat?.type ?? 'CHAT'),
+                              : (chat?.type ?? widget.chatType),
                           chatId: widget.chatId,
                           photoActions: _photoActions,
                           overrideStatus: _effectiveStatus(message),

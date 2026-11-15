@@ -65,6 +65,7 @@ import 'core/config/app_video_note_quality.dart';
 import 'core/config/app_pill_gradient.dart';
 import 'core/config/app_visual_style.dart';
 import 'core/config/app_wallpaper_tint.dart';
+import 'core/storage/chat_auto_download_store.dart';
 import 'core/storage/chat_wallpaper_store.dart';
 import 'core/utils/wallpaper_seed.dart';
 import 'core/utils/seed_scheme.dart';
@@ -318,6 +319,8 @@ void main(List<String> args) async {
   await whatsNewFuture;
   await motionFuture;
   await ChatEncryptionStore.instance.load();
+  // #***! исключения авто-загрузки по чатам нужны до отрисовки бабблов
+  await ChatAutoDownloadStore.instance.load();
   E2eeService.instance.attach(messagesModule);
   await KometSettings.load();
   await AppLock.instance.load();

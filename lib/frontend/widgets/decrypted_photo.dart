@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../../core/config/komet_settings.dart';
 import '../../core/crypto/encrypted_photo_cache.dart';
 import '../../core/crypto/e2ee_service.dart';
 import '../../core/storage/chat_encryption_store.dart';
@@ -16,6 +17,11 @@ class DecryptedPhoto extends StatefulWidget {
   final Uint8List? sealedTicket;
   final Widget Function(EncryptedPhotoView? view) builder;
 
+  /// Правило авто-загрузки фото этого чата: когда выключено — зашифрованный
+  /// файл не качается заранее, но уже скачанный всё равно расшифровывается.
+  /// null — без ограничения (прочие вызывающие места).
+  final AutoDownloadRule? autoDownload;
+
   const DecryptedPhoto({
     super.key,
     required this.accountId,
@@ -25,6 +31,7 @@ class DecryptedPhoto extends StatefulWidget {
     required this.urlLoader,
     required this.builder,
     this.sealedTicket,
+    this.autoDownload,
   });
 
   @override
@@ -32,9 +39,13 @@ class DecryptedPhoto extends StatefulWidget {
 }
 
 class _DecryptedPhotoState extends State<DecryptedPhoto> {
+  Listenable? _ruleListenable;
+
   @override
   void initState() {
     super.initState();
+    _ruleListenable = widget.autoDownload?.listenable;
+    _ruleListenable?.addListener(_onRuleChanged);
     _request();
     ChatEncryptionStore.instance.revision.addListener(_onEncryptionChanged);
     E2eeService.instance.revision.addListener(_onEncryptionChanged);
@@ -42,6 +53,7 @@ class _DecryptedPhotoState extends State<DecryptedPhoto> {
 
   @override
   void dispose() {
+    _ruleListenable?.removeListener(_onRuleChanged);
     ChatEncryptionStore.instance.revision.removeListener(_onEncryptionChanged);
     E2eeService.instance.revision.removeListener(_onEncryptionChanged);
     super.dispose();
@@ -60,6 +72,9 @@ class _DecryptedPhotoState extends State<DecryptedPhoto> {
 
   void _onEncryptionChanged() => scheduleMicrotask(_request);
 
+  // #***! правило включили на лету — файл догрузится без перезахода в чат
+  void _onRuleChanged() => _request();
+
   void _request() {
     if (!mounted) return;
     EncryptedPhotoCache.instance.request(
@@ -69,6 +84,7 @@ class _DecryptedPhotoState extends State<DecryptedPhoto> {
       urlLoader: widget.urlLoader,
       size: widget.size,
       sealedTicket: widget.sealedTicket,
+      allowDownload: widget.autoDownload?.value ?? true,
     );
   }
 

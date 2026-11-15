@@ -26,7 +26,7 @@ class AutoplayClip {
   final Future<String?> Function()? resolveUrl;
   final Size frameSize;
   final ValueListenable<bool> setting;
-  final ValueListenable<bool> autoDownload;
+  final AutoDownloadRule autoDownload;
 
   const AutoplayClip({
     required this.cacheName,
@@ -41,6 +41,7 @@ class AutoplayClip {
     VideoAttachment video, {
     required String messageId,
     required int chatId,
+    required AutoDownloadRule autoDownload,
   }) {
     final duration = video.duration;
     if (duration == null || duration <= 0 || duration > maxVideoDurationMs) {
@@ -63,11 +64,14 @@ class AutoplayClip {
             ),
       frameSize: _sizeOf(video.width, video.height),
       setting: KometSettings.autoplayVideo,
-      autoDownload: KometSettings.autoDownloadVideo,
+      autoDownload: autoDownload,
     );
   }
 
-  static AutoplayClip? gif(PhotoAttachment photo) {
+  static AutoplayClip? gif(
+    PhotoAttachment photo, {
+    required AutoDownloadRule autoDownload,
+  }) {
     final url = photo.mp4Url;
     final photoId = photo.photoId;
     if (!photo.isGif || url == null || url.isEmpty || photoId == null) {
@@ -78,7 +82,7 @@ class AutoplayClip {
       resolveUrl: () async => url,
       frameSize: _sizeOf(photo.width, photo.height),
       setting: KometSettings.autoplayGif,
-      autoDownload: KometSettings.autoDownloadPhoto,
+      autoDownload: autoDownload,
     );
   }
 
@@ -144,8 +148,8 @@ class _MediaAutoplayState extends State<MediaAutoplay>
     super.didUpdateWidget(oldWidget);
     final clip = widget.clip;
     final old = oldWidget.clip;
-    if (!identical(old?.setting, clip?.setting) ||
-        !identical(old?.autoDownload, clip?.autoDownload) ||
+    if (old?.setting != clip?.setting ||
+        old?.autoDownload != clip?.autoDownload ||
         oldWidget.manualLoadKey != widget.manualLoadKey) {
       _watch();
     }
@@ -172,7 +176,8 @@ class _MediaAutoplayState extends State<MediaAutoplay>
     final key = widget.manualLoadKey;
     _watched.addAll([
       ?clip?.setting,
-      ?clip?.autoDownload,
+      // #***! правило само слушает и флаг вида чата, и ревизию исключений
+      if (clip != null) clip.autoDownload.listenable,
       if (key != null) AutoDownloadGate.listen(key),
     ]);
     for (final listenable in _watched) {

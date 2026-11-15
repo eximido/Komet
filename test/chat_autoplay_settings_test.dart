@@ -1,9 +1,14 @@
-import 'package:cached_network_image/cached_network_image.dart';
+import 'dart:async';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:komet/backend/modules/messages.dart';
 import 'package:komet/core/config/komet_settings.dart';
+import 'package:komet/core/storage/chat_auto_download_store.dart';
+import 'package:komet/core/utils/media_cache_names.dart';
 import 'package:komet/frontend/widgets/attachment/bubbles/media_autoplay.dart';
+import 'package:komet/frontend/widgets/attachment/bubbles/network_photo.dart';
 import 'package:komet/frontend/widgets/attachment/bubbles/photo_bubble.dart';
 import 'package:komet/frontend/widgets/lottie_image.dart';
 import 'package:komet/frontend/widgets/message_bubble.dart';
@@ -40,15 +45,62 @@ void main() {
   });
 
   group('AutoplayClip', () {
+    AutoDownloadRule rule(
+      String chatType, {
+      AutoDownloadMedia media = AutoDownloadMedia.video,
+      int? chatId,
+    }) => switch (media) {
+      AutoDownloadMedia.photo => AutoDownloadRule.photo(
+        accountId: 1,
+        chatId: chatId,
+        chatType: chatType,
+      ),
+      AutoDownloadMedia.video => AutoDownloadRule.video(
+        accountId: 1,
+        chatId: chatId,
+        chatType: chatType,
+      ),
+      AutoDownloadMedia.voice => AutoDownloadRule.voice(
+        accountId: 1,
+        chatId: chatId,
+        chatType: chatType,
+      ),
+      AutoDownloadMedia.videoNote => AutoDownloadRule.videoNote(
+        accountId: 1,
+        chatId: chatId,
+        chatType: chatType,
+      ),
+    };
+
     test('takes short remote video clips', () {
       final clip = AutoplayClip.video(
         const VideoAttachment(videoId: 1, videoToken: 't', duration: 12000),
         messageId: '1',
         chatId: 2,
+        autoDownload: rule('DIALOG'),
       );
       expect(clip, isNotNull);
       expect(clip!.setting, same(KometSettings.autoplayVideo));
-      expect(clip.autoDownload, same(KometSettings.autoDownloadVideo));
+      expect(clip.autoDownload.value, isTrue);
+    });
+
+    test('binds the auto-download flag of the chat kind', () {
+      addTearDown(
+        () => KometSettings.autoDownloadOf('CHANNEL').video.value = true,
+      );
+      KometSettings.autoDownloadOf('CHANNEL').video.value = false;
+      final clip = AutoplayClip.video(
+        const VideoAttachment(videoId: 1, videoToken: 't', duration: 12000),
+        messageId: '1',
+        chatId: 2,
+        autoDownload: rule('CHANNEL'),
+      );
+      expect(clip!.autoDownload.value, isFalse);
+      expect(
+        rule('DIALOG').value,
+        isTrue,
+        reason: 'флаг другого вида чата не задет',
+      );
     });
 
     test('skips videos over a minute or without a duration', () {
@@ -61,6 +113,7 @@ void main() {
           ),
           messageId: '1',
           chatId: 2,
+          autoDownload: rule('DIALOG'),
         ),
         isNull,
       );
@@ -69,6 +122,7 @@ void main() {
           const VideoAttachment(videoId: 1, videoToken: 't'),
           messageId: '1',
           chatId: 2,
+          autoDownload: rule('DIALOG'),
         ),
         isNull,
       );
@@ -80,6 +134,7 @@ void main() {
           const VideoAttachment(duration: 5000),
           messageId: '1',
           chatId: 2,
+          autoDownload: rule('DIALOG'),
         ),
         isNull,
       );
@@ -88,16 +143,17 @@ void main() {
           const VideoAttachment(duration: 5000, localPath: '/tmp/clip.mp4'),
           messageId: '1',
           chatId: 2,
+          autoDownload: rule('DIALOG'),
         )?.localPath,
         '/tmp/clip.mp4',
       );
     });
 
     test('plays a GIF from its mp4 under the GIF switch', () async {
-      final clip = AutoplayClip.gif(_gif);
+      final clip = AutoplayClip.gif(_gif, autoDownload: rule('DIALOG'));
       expect(clip, isNotNull);
       expect(clip!.setting, same(KometSettings.autoplayGif));
-      expect(clip.autoDownload, same(KometSettings.autoDownloadPhoto));
+      expect(clip.autoDownload.value, isTrue);
       expect(await clip.resolveUrl!(), _gif.mp4Url);
     });
 
@@ -105,6 +161,7 @@ void main() {
       expect(
         AutoplayClip.gif(
           const PhotoAttachment(photoId: 5, baseUrl: 'https://e.test/p.jpg'),
+          autoDownload: rule('DIALOG'),
         ),
         isNull,
       );
@@ -134,6 +191,10 @@ void main() {
   testWidgets('a GIF shows its badge and a still poster', (tester) async {
     addTearDown(() => KometSettings.autoplayGif.value = true);
     KometSettings.autoplayGif.value = false;
+    // #***! сеть в тестах недоступна — загрузка висит и не создаёт таймеров
+    NetworkPhoto.resetForTesting();
+    NetworkPhoto.fetch = (_, _) => Completer<File?>().future;
+    addTearDown(NetworkPhoto.resetForTesting);
     await tester.pumpWidget(
       MaterialApp(
         locale: const Locale('ru'),
@@ -167,10 +228,9 @@ void main() {
     final time = find.text('12:00');
     expect(tester.getCenter(badge).dy, closeTo(tester.getCenter(time).dy, 1));
     expect(tester.getCenter(badge).dx, lessThan(tester.getCenter(time).dx));
-    final poster = tester.widget<CachedNetworkImage>(
-      find.byType(CachedNetworkImage),
-    );
-    expect(poster.imageUrl, _gif.previewUrl);
+    final poster = tester.widget<NetworkPhoto>(find.byType(NetworkPhoto));
+    expect(poster.url, _gif.previewUrl);
+    expect(poster.cacheName, networkPhotoCacheName(_gif.previewUrl!));
   });
 
   testWidgets('animated emoji in messages follow the autoplay switch', (

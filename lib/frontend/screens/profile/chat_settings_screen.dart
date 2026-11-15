@@ -19,6 +19,7 @@ import '../../widgets/swipe_route.dart';
 import '../lock/archive_gate.dart';
 import '../stickers/sticker_settings_screen.dart';
 import 'archive_lock_settings_screen.dart';
+import 'auto_download_settings_section.dart';
 import 'folders_settings_section.dart';
 
 class ChatSettingsScreen extends StatelessWidget {
@@ -151,34 +152,8 @@ class _ChatsSettingsSection extends StatelessWidget {
           l10n.chatSettingsAutoDownloadTitle,
           padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
         ),
-        SettingsCard(
-          children: [
-            _toggle(
-              KometSettings.autoDownloadPhoto,
-              KometSettings.setAutoDownloadPhoto,
-              Symbols.image,
-              l10n.chatSettingsAutoDownloadPhoto,
-            ),
-            _toggle(
-              KometSettings.autoDownloadVideo,
-              KometSettings.setAutoDownloadVideo,
-              Symbols.videocam,
-              l10n.chatSettingsAutoDownloadVideo,
-            ),
-            _toggle(
-              KometSettings.autoDownloadVoice,
-              KometSettings.setAutoDownloadVoice,
-              Symbols.mic,
-              l10n.chatSettingsAutoDownloadVoice,
-            ),
-            _toggle(
-              KometSettings.autoDownloadVideoNote,
-              KometSettings.setAutoDownloadVideoNote,
-              Symbols.radio_button_checked,
-              l10n.chatSettingsAutoDownloadVideoNote,
-            ),
-          ],
-        ),
+        // #***! авто-загрузка настраивается отдельно для лички, групп и каналов
+        const AutoDownloadSettingsSection(),
         const SizedBox(height: 20),
         SectionHeader(
           l10n.chatSettingsAutoplayTitle,

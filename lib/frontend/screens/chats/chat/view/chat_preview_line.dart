@@ -5,6 +5,10 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
+import 'package:komet/core/config/komet_settings.dart';
+import 'package:komet/core/media/auto_download_gate.dart';
+import 'package:komet/core/utils/media_cache.dart';
+import 'package:komet/core/utils/media_cache_names.dart';
 import 'package:komet/core/utils/text_format.dart';
 import 'package:komet/frontend/widgets/formatted_message_text.dart';
 import 'package:komet/models/chat_preview_media.dart';
@@ -93,6 +97,11 @@ class ChatPreviewLine extends StatelessWidget {
   final TextStyle style;
   final bool italic;
 
+  /// Правило авто-загрузки для сетевых миниатюр строки чата: url-миниатюра
+  /// это то же фото из сообщения, скачивать её без разрешения нельзя.
+  /// null — ограничений нет (вызывающие места без контекста чата).
+  final AutoDownloadRule? Function(bool video)? networkThumbRule;
+
   const ChatPreviewLine({
     super.key,
     required this.text,
@@ -101,6 +110,7 @@ class ChatPreviewLine extends StatelessWidget {
     this.ranges = const [],
     this.media,
     this.italic = false,
+    this.networkThumbRule,
   });
 
   @override
@@ -171,7 +181,11 @@ class ChatPreviewLine extends StatelessWidget {
           spacing: 2,
           children: [
             for (final thumb in preview.thumbs)
-              _PreviewThumb(thumb: thumb, size: size),
+              _PreviewThumb(
+                thumb: thumb,
+                size: size,
+                rule: networkThumbRule?.call(thumb.video),
+              ),
           ],
         ),
       );
@@ -193,12 +207,35 @@ class _PreviewThumb extends StatelessWidget {
   final ChatPreviewThumb thumb;
   final double size;
 
-  const _PreviewThumb({required this.thumb, required this.size});
+  /// Правило авто-загрузки этого чата для вида миниатюры; null — без гейта.
+  final AutoDownloadRule? rule;
+
+  const _PreviewThumb({required this.thumb, required this.size, this.rule});
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final provider = _provider();
+    final source = thumb.source;
+    final rule = this.rule;
+    // #***! локальные и data-uri миниатюры сети не касаются — рисуем как были
+    if (rule == null || !source.startsWith('http')) {
+      return _box(cs, _provider());
+    }
+    // #***! url-миниатюра — то же медиа из сообщения: качаем только когда
+    // правило разрешает или файл уже лежит в кэше; иначе иконка вместо фото
+    return ListenableBuilder(
+      listenable: Listenable.merge([
+        AutoDownloadGate.listen(source),
+        rule.listenable,
+      ]),
+      builder: (context, _) => _box(
+        cs,
+        AutoDownloadGate.allows(rule.value, source) ? _provider() : null,
+      ),
+    );
+  }
+
+  Widget _box(ColorScheme cs, ImageProvider? provider) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(3),
       child: SizedBox(
@@ -214,8 +251,15 @@ class _PreviewThumb extends StatelessWidget {
                 fit: BoxFit.cover,
                 gaplessPlayback: true,
                 errorBuilder: (_, _, _) => const SizedBox.shrink(),
+              )
+            else
+              Icon(
+                thumb.video ? Symbols.movie : Symbols.image,
+                size: size * 0.8,
+                color: cs.outline,
+                weight: 500,
               ),
-            if (thumb.video)
+            if (thumb.video && provider != null)
               Center(
                 child: Icon(
                   Symbols.play_arrow,
@@ -241,6 +285,17 @@ const int _localThumbWidth = 128;
 final Map<String, ImageProvider> _thumbCache = {};
 
 ImageProvider? _thumbProvider(String source) {
+  // #***! полное фото могло уже лежать в постоянном кэше — миниатюра
+  // берётся оттуда, без скачивания во временный кэш
+  final persisted = MediaCache.presentPath(networkPhotoCacheName(source));
+  if (persisted != null) {
+    return ResizeImage(
+      FileImage(File(persisted)),
+      width: 64,
+      height: 64,
+      policy: ResizeImagePolicy.fit,
+    );
+  }
   final cached = _thumbCache[source];
   if (cached != null) return cached;
   final ImageProvider? provider;

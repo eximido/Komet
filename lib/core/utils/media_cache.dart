@@ -341,6 +341,56 @@ class MediaCache {
     });
   }
 
+  // #***! синхронный путь кэш-файла когда он точно есть: провайдерам картинок
+  /// Путь к файлу [name], если он точно уже в кэше, иначе null.
+  ///
+  /// Синхронный вариант для мест, которые не могут ждать (провайдеры фото);
+  /// после первого обращения к кэшу каталог уже известен. До прогрева
+  /// возвращает null — вызывавший код остаётся на сетевом провайдере.
+  static String? presentPath(String name) {
+    final dir = _dir;
+    if (dir == null) return null;
+    final key = _sanitize(name);
+    return _present.contains(key) ? p.join(dir.path, key) : null;
+  }
+
+  // #***! перенос уже скачанного файла в постоянный кэш: фото могло
+  // оказаться во временном кэше картинок (например, миниатюрой списка),
+  // повторно качать его незачем — копируем и дальше живём как все медиа
+  static Future<File?> import(String name, File source) async {
+    final key = _sanitize(name);
+    final ready = await existing(key);
+    if (ready != null) return ready;
+    final generation = _generation;
+    try {
+      final length = await source.length();
+      if (length <= 0 || length > maxSingleFileBytes) return null;
+      final quota = maxBytes;
+      if (quota != AppCacheLimit.unlimited && length > quota) {
+        return null;
+      }
+      final dir = await _cacheDir();
+      final staging = await dir.createTemp('writing_');
+      try {
+        final part = await source.copy(p.join(staging.path, 'content.part'));
+        return await _mutate(() async {
+          if (generation != _generation) return null;
+          final target = await fileFor(key);
+          if (await target.exists()) return target;
+          await part.rename(target.path);
+          _markPresent(key, true);
+          CacheJanitor.instance.noteWrite(CacheStore.media, length);
+          return target;
+        });
+      } finally {
+        if (await staging.exists()) await staging.delete(recursive: true);
+      }
+    } catch (e) {
+      logger.w('[cache] не перенёс $name: $e');
+      return null;
+    }
+  }
+
   static void _markPresent(String name, bool present) {
     final key = _sanitize(name);
     final changed = present ? _present.add(key) : _present.remove(key);

@@ -7,6 +7,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'package:komet/backend/modules/messages.dart';
 import 'package:komet/main.dart';
 
+import '../../../../core/config/komet_settings.dart';
 import '../../../../core/utils/download_progress.dart';
 import '../../../../core/utils/download_history.dart';
 import '../../../../core/utils/file_download.dart';
@@ -360,6 +361,12 @@ class _FileBubbleState extends State<FileBubble> {
         size: file.size ?? 0,
         urlLoader: _fileUrl,
         sealedTicket: _sealedTicket,
+        // #***! зашифрованную картинку-файл качаем по правилу фото этого чата
+        autoDownload: AutoDownloadRule.photo(
+          accountId: ctx.myId,
+          chatId: ctx.chatId,
+          chatType: ctx.chatType,
+        ),
         builder: (view) => _encryptedPreview(view, previewUrl),
       );
     }
