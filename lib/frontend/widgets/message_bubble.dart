@@ -1197,6 +1197,25 @@ class MessageBubble extends StatelessWidget {
     return first is VideoAttachment && !first.isNote;
   }
 
+  // #***! посты канала читаются как лента: блок каждого поста растягивается
+  // на фиксированную ширину, почти равную ширине списка. Текст не переносится
+  // из-за узкой иллюстрации, а ширина блока не скачет от поста к посту.
+  // Стикеры, видеокружки и крупные анимодзи остаются в натуральном размере.
+  bool get _channelFeedLayout {
+    if (!channelPost) return false;
+    if (_isSticker || _isVideoNote || _jumboAnimojiUrls != null) {
+      return false;
+    }
+    if (_contentType == MessageType.text) return true;
+    return switch (_primaryAttachment) {
+      PhotoAttachment() => true,
+      VideoAttachment() => true,
+      ShareAttachment() => true,
+      UnknownAttachment() => true,
+      _ => false,
+    };
+  }
+
   static const int _jumboAnimojiLimit = 4;
 
   List<String>? get _jumboAnimojiUrls {
@@ -1359,6 +1378,10 @@ class MessageBubble extends StatelessWidget {
 
   static const double _groupAvatarSize = 30;
 
+  /// Горизонтальный отступ блока сообщения от краёв списка; в канальной
+  /// ленте справа к нему добавляется гутер выделения.
+  static const double _rowHPadding = 8;
+
   Widget _buildLeadingAvatar(ColorScheme cs) {
     final senderAvatar =
         senderAvatarOverride ?? ContactCache.getAvatar(message.senderId);
@@ -1495,14 +1518,40 @@ class MessageBubble extends StatelessWidget {
     final keyboard = _inlineKeyboard;
     final isVideoNote = _isVideoNote;
     final screenWidth = availableWidth;
+    final feedLayout = _channelFeedLayout;
+    // #***! у поста канала справа остаётся только отступ строки плюс гутер
+    // выделения: в режиме выделения блок сдвигается на гутер вправо и не
+    // должен ни переносить текст, ни вылезать за край экрана
     final maxBubbleWidth = isVideoNote
         ? math.min(screenWidth - 24, 560.0)
+        : feedLayout
+        ? math.min(
+            math.max(
+              screenWidth -
+                  2 * _rowHPadding -
+                  BubbleContext.selectionGutterWidth,
+              48.0,
+            ),
+            760.0,
+          )
         : math.min(screenWidth * 0.75, 760.0);
     final noBubbleBackground =
         isVideoNote || _isSticker || jumboAnimoji != null;
     final bubbleColor = noBubbleBackground || BubbleChrome.hiddenOf(context)
         ? Colors.transparent
         : (_outgoing ? cs.primaryContainer : cs.surfaceContainerHighest);
+
+    final bool hasCommentsFooter = onCommentsTap != null;
+    final EdgeInsets containerPadding = hasCommentsFooter
+        ? EdgeInsets.zero
+        : padding;
+    // Ширина, на которую растягивается контент ленточного поста: иллюстрации
+    // и подписи компонуются внутри неё и не диктуют ширину блока. При любых
+    // раскладках (с футером комментариев и без) контент лежит внутри
+    // горизонтального отступа `padding`.
+    final double? feedContentWidth = feedLayout
+        ? maxBubbleWidth - padding.horizontal
+        : null;
 
     BubbleContext makeCtx({bool metaInFooter = false}) => BubbleContext(
       context: context,
@@ -1532,6 +1581,7 @@ class MessageBubble extends StatelessWidget {
       reactionInfo: _resolveReactionInfo(),
       views: views,
       selectable: _wrapSelectable,
+      channelFeedWidth: feedContentWidth,
     );
 
     final reactionsInside = contentType != MessageType.text;
@@ -1549,11 +1599,6 @@ class MessageBubble extends StatelessWidget {
             tappable: onReplyTap != null,
           )
         : null;
-
-    final bool hasCommentsFooter = onCommentsTap != null;
-    final EdgeInsets containerPadding = hasCommentsFooter
-        ? EdgeInsets.zero
-        : padding;
 
     final Widget contentWithReactions = reactionsInside
         ? _contentWithReactionsFooter(
@@ -1585,10 +1630,37 @@ class MessageBubble extends StatelessWidget {
             child: quote,
           );
 
-    final Widget innerContent =
-        contentType == MessageType.text &&
-            jumboAnimoji == null &&
-            _stretchesTextRow
+    final Widget innerContent = feedLayout
+        ? SizedBox(
+            // Фиксированная ширина ленты: подпись и медиа не сужают блок,
+            // шапка канала и цитата не подстраиваются под картинку.
+            width: feedContentWidth,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (senderHeader != null)
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: senderHeader,
+                  ),
+                if (quote != null) ...[
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: _CapIntrinsicWidth(
+                      cap: maxBubbleWidth * _replyWidthShare,
+                      child: quote,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                ],
+                contentWithReactions,
+              ],
+            ),
+          )
+        : contentType == MessageType.text &&
+              jumboAnimoji == null &&
+              _stretchesTextRow
         ? _IntrinsicColumn(
             stretch: true,
             measureLast: true,
@@ -1642,6 +1714,8 @@ class MessageBubble extends StatelessWidget {
         slot: BubbleSlot.background,
         child: Container(
           constraints: BoxConstraints(
+            // У поста канала блок всегда одной ширины — как колонка ленты
+            minWidth: feedLayout ? maxBubbleWidth : 0,
             maxWidth: maxBubbleWidth,
             minHeight: showAvatarSlot && chatType == "CHAT"
                 ? _groupAvatarSize
@@ -1674,8 +1748,8 @@ class MessageBubble extends StatelessWidget {
 
     return Padding(
       padding: EdgeInsets.only(
-        left: 8,
-        right: 8,
+        left: _rowHPadding,
+        right: _rowHPadding,
         top: topMargin,
         bottom: bottomMargin,
       ),
@@ -1712,8 +1786,7 @@ class MessageBubble extends StatelessWidget {
   }
 
   Widget _buildCommentsFooter(BuildContext context, ColorScheme cs) {
-    final label =
-        commentsLabel ?? AppLocalizations.of(context)!.commentsTitle;
+    final label = commentsLabel ?? AppLocalizations.of(context)!.commentsTitle;
     final accent = _outgoing ? cs.onPrimaryContainer : cs.primary;
     return Material(
       color: Colors.transparent,
@@ -1808,15 +1881,13 @@ class MessageBubble extends StatelessWidget {
     const outer = Radius.circular(14);
     const inner = Radius.circular(4);
     bool has(int r, int c) =>
-        r >= 0 &&
-        r < rows.length &&
-        c >= 0 &&
-        c < rows[r].length;
+        r >= 0 && r < rows.length && c >= 0 && c < rows[r].length;
     Radius corner(bool vertical, bool horizontal) {
       final vNeighbor = has(row + (vertical ? -1 : 1), col);
       final hNeighbor = has(row, col + (horizontal ? -1 : 1));
       return vNeighbor || hNeighbor ? inner : outer;
     }
+
     return BorderRadius.only(
       topLeft: corner(true, true),
       topRight: corner(true, false),
@@ -2054,6 +2125,16 @@ class MessageBubble extends StatelessWidget {
         meta: carriesMeta ? ctx.footerMeta() : null,
       ),
     );
+
+    // #***! лента канала: контент и ряд реакций всегда на ширине поста,
+    // реакции не подстраиваются под узкую иллюстрацию
+    if (_channelFeedLayout) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [content, footer],
+      );
+    }
 
     // #***! у медиа ширину диктует само медиа, реакции переносим по строкам
     // чтобы длинный ряд чипов не растягивал бабл шире картинки

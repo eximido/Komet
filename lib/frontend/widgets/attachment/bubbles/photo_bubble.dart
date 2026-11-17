@@ -135,12 +135,29 @@ class PhotoBubble extends StatelessWidget {
   static double layoutWidth(
     List<MessageAttachment> media, {
     bool hasCaption = false,
+    double? feedWidth,
   }) {
+    if (feedWidth != null && feedWidth > 0) return feedWidth;
     if (media.length != 1) return BubbleContext.photoMaxSize;
     return _displaySize(media.single, hasCaption: hasCaption).width;
   }
 
-  static Size _displaySize(MessageAttachment item, {bool hasCaption = false}) {
+  static Size _displaySize(
+    MessageAttachment item, {
+    bool hasCaption = false,
+    double? feedWidth,
+  }) {
+    // В ленте канала медиа занимает всю ширину поста: узкая вертикальная
+    // иллюстрация не сжимает блок с подписью до своей ширины. Высота
+    // по-прежнему ограничена photoMaxSize.
+    if (feedWidth != null && feedWidth > 0) {
+      final aspect = _aspectRatio(item);
+      final height = aspect > 0 ? feedWidth / aspect : feedWidth;
+      return Size(
+        feedWidth,
+        height.clamp(BubbleContext.photoMinSize, BubbleContext.photoMaxSize),
+      );
+    }
     final minWidth = hasCaption
         ? BubbleContext.captionedMediaMinWidth
         : BubbleContext.photoMinSize;
@@ -182,6 +199,7 @@ class PhotoBubble extends StatelessWidget {
     final resolvedCaption = hasMessageCaption ? ctx.caption() : null;
     final hasCaption = resolvedCaption != null;
     final count = media.length;
+    final feedWidth = ctx.channelFeedWidth;
 
     Widget photosWidget;
     if (count == 1) {
@@ -190,6 +208,7 @@ class PhotoBubble extends StatelessWidget {
         media[0],
         hasCaption: hasCaption,
         hasContentAbove: hasContentAbove,
+        feedWidth: feedWidth,
       );
     } else {
       photosWidget = _buildAlbum(ctx, media);
@@ -210,7 +229,7 @@ class PhotoBubble extends StatelessWidget {
 
     if (count == 1) {
       return SizedBox(
-        width: layoutWidth(media, hasCaption: true),
+        width: layoutWidth(media, hasCaption: true, feedWidth: feedWidth),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -261,8 +280,13 @@ class PhotoBubble extends StatelessWidget {
     MessageAttachment photo, {
     required bool hasCaption,
     required bool hasContentAbove,
+    double? feedWidth,
   }) {
-    final size = _displaySize(photo, hasCaption: hasCaption);
+    final size = _displaySize(
+      photo,
+      hasCaption: hasCaption,
+      feedWidth: feedWidth,
+    );
     final dpr = MediaQuery.of(ctx.context).devicePixelRatio;
 
     final matchTop = hasCaption && !hasContentAbove;
