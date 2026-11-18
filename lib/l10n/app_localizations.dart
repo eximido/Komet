@@ -13483,6 +13483,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t save the ringtone'**
   String get callRingtoneSaveFailed;
+
+  /// No description provided for @callRingtoneMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'Call ringtone'**
+  String get callRingtoneMenu;
+
+  /// No description provided for @callRingtoneContactHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Plays on calls from this contact'**
+  String get callRingtoneContactHint;
+
+  /// No description provided for @callRingtoneContactDefaultHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The shared call melody from settings'**
+  String get callRingtoneContactDefaultHint;
+
+  /// No description provided for @callRingtoneSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Ringtone updated for {name}'**
+  String callRingtoneSaved(String name);
+
+  /// No description provided for @callRingtoneReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset to the default ringtone'**
+  String get callRingtoneReset;
 }
 
 class _AppLocalizationsDelegate

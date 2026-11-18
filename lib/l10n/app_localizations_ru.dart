@@ -7629,4 +7629,22 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get callRingtoneSaveFailed => 'Не удалось сохранить мелодию';
+
+  @override
+  String get callRingtoneMenu => 'Мелодия звонка';
+
+  @override
+  String get callRingtoneContactHint => 'Играет при звонках от этого контакта';
+
+  @override
+  String get callRingtoneContactDefaultHint =>
+      'Общая мелодия звонка из настроек';
+
+  @override
+  String callRingtoneSaved(String name) {
+    return 'Мелодия для $name обновлена';
+  }
+
+  @override
+  String get callRingtoneReset => 'Сброшено на мелодию по умолчанию';
 }

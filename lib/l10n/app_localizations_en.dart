@@ -7576,4 +7576,22 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get callRingtoneSaveFailed => 'Couldn\'t save the ringtone';
+
+  @override
+  String get callRingtoneMenu => 'Call ringtone';
+
+  @override
+  String get callRingtoneContactHint => 'Plays on calls from this contact';
+
+  @override
+  String get callRingtoneContactDefaultHint =>
+      'The shared call melody from settings';
+
+  @override
+  String callRingtoneSaved(String name) {
+    return 'Ringtone updated for $name';
+  }
+
+  @override
+  String get callRingtoneReset => 'Reset to the default ringtone';
 }

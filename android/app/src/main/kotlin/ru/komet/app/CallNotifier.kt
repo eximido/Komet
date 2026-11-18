@@ -92,7 +92,7 @@ object CallNotifier {
             Log.d("KometFcm", "call push ignored: another call is in progress")
             return
         }
-        if (!CallRinger.start(ctx, conversationId)) {
+        if (!CallRinger.start(ctx, conversationId, callerId, account)) {
             Log.d("KometFcm", "call push ignored: $conversationId already rings or ended")
             return
         }
@@ -237,7 +237,12 @@ object CallRinger {
     private val finished = LinkedHashSet<String>()
 
     @Synchronized
-    fun start(ctx: Context, conversationId: String): Boolean {
+    fun start(
+        ctx: Context,
+        conversationId: String,
+        callerId: String,
+        account: String,
+    ): Boolean {
         if (conversationId.isNotEmpty()) {
             if (conversationId in finished) return false
             if (conversationId == ringing) return false
@@ -254,7 +259,7 @@ object CallRinger {
         val audio = ctx.getSystemService(Context.AUDIO_SERVICE) as AudioManager
         val mode = audio.ringerMode
         if (mode == AudioManager.RINGER_MODE_NORMAL) {
-            playRingtone(ctx)
+            playRingtone(ctx, callerId, account)
             vibrate(ctx)
         } else if (mode == AudioManager.RINGER_MODE_VIBRATE) {
             vibrate(ctx)
@@ -306,8 +311,8 @@ object CallRinger {
         NotificationManagerCompat.from(ctx).cancel(CallConst.NOTIF_ID)
     }
 
-    private fun playRingtone(ctx: Context) {
-        val custom = CallRingtones.globalPath(ctx)
+    private fun playRingtone(ctx: Context, callerId: String, account: String) {
+        val custom = CallRingtones.pick(ctx, account, callerId)
         if (custom != null && playRingtoneFile(ctx, custom)) return
         playDefaultRingtone(ctx)
     }

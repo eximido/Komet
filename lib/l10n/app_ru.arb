@@ -2354,5 +2354,11 @@
   "callRingtoneSheetDefaultHint": "Обычный звонок телефона",
   "callRingtoneSheetChooseFile": "Выбрать файл…",
   "callRingtoneTooLarge": "Файл слишком большой (макс. 16 МБ)",
-  "callRingtoneSaveFailed": "Не удалось сохранить мелодию"
+  "callRingtoneSaveFailed": "Не удалось сохранить мелодию",
+  "callRingtoneMenu": "Мелодия звонка",
+  "callRingtoneContactHint": "Играет при звонках от этого контакта",
+  "callRingtoneContactDefaultHint": "Общая мелодия звонка из настроек",
+  "callRingtoneSaved": "Мелодия для {name} обновлена",
+  "@callRingtoneSaved": {"placeholders": {"name": {"type": "String"}}},
+  "callRingtoneReset": "Сброшено на мелодию по умолчанию"
 }

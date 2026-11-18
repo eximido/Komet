@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -7,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../utils/logger.dart';
+import 'per_chat_json_store.dart';
 
 @immutable
 class CallRingtone {
@@ -100,5 +102,44 @@ class CallRingtoneStore {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_prefsKey);
     await deleteRingtoneFile(previous.path);
+  }
+}
+
+class CallRingtoneOverrides extends PerChatJsonStore<CallRingtone> {
+  CallRingtoneOverrides._()
+    : super(
+        prefsKey: 'call_ringtone_overrides',
+        fromJson: CallRingtone.fromJson,
+        toJson: (value) => value.toJson(),
+      );
+
+  static final CallRingtoneOverrides instance = CallRingtoneOverrides._();
+
+  CallRingtone? get(int accountId, int peerId) => read(accountId, peerId);
+
+  Future<bool> setFromPickedPath(
+    int accountId,
+    int peerId,
+    String sourcePath,
+    String displayName,
+  ) async {
+    if (accountId == 0) return false;
+    final path = await copyRingtoneFile(
+      sourcePath,
+      'contact_${accountId}_$peerId',
+    );
+    if (path == null) return false;
+    await write(accountId, peerId, CallRingtone(path: path, name: displayName));
+    return true;
+  }
+
+  Future<void> clear(int accountId, int peerId) =>
+      write(accountId, peerId, null);
+
+  @override
+  void onBeforeWrite(String key, CallRingtone? previous, CallRingtone? next) {
+    if (previous != null && previous.path != next?.path) {
+      unawaited(deleteRingtoneFile(previous.path));
+    }
   }
 }

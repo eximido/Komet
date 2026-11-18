@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/services.dart';
+import 'dart:io' show Platform;
 import 'dart:math' as math;
 import 'dart:ui' show lerpDouble;
 
@@ -19,6 +20,7 @@ import '../../../core/config/app_show_extra_info.dart';
 import '../../../core/config/app_stories.dart';
 import '../../../core/protocol/packet.dart';
 import '../../../core/storage/app_database.dart';
+import '../../../core/storage/call_ringtone_store.dart';
 import '../../../core/storage/chat_members_store.dart';
 import '../../../core/utils/format.dart';
 import '../../../core/utils/logger.dart';
@@ -32,6 +34,7 @@ import '../../widgets/animated_slash_icon.dart';
 import '../../widgets/animated_text_swap.dart';
 import '../../widgets/attachment/photo_hero.dart';
 import '../../widgets/avatar_gallery.dart';
+import '../../widgets/call_ringtone_sheet.dart';
 import '../../widgets/photo_viewer.dart';
 import '../../widgets/chat_info/shared_content_tabs.dart';
 import '../../widgets/connection_status.dart';
@@ -1219,6 +1222,14 @@ class _ChatInfoScreenState extends State<ChatInfoScreen>
         ));
       }
       if (!_isBot && _otherId != null && _otherId != _myId) {
+        if (Platform.isAndroid) {
+          entries.add((
+            icon: Symbols.music_note,
+            label: l10n.callRingtoneMenu,
+            destructive: false,
+            onTap: _pickRingtone,
+          ));
+        }
         final storiesHidden = storiesModule.isAuthorHidden(_otherId!);
         entries.add((
           icon: storiesHidden ? Symbols.visibility : Symbols.visibility_off,
@@ -1296,6 +1307,42 @@ class _ChatInfoScreenState extends State<ChatInfoScreen>
       case EditContactAction.removed:
         Navigator.of(context).pop();
     }
+  }
+
+  Future<void> _pickRingtone() async {
+    final peerId = _otherId;
+    if (peerId == null || _myId == 0) return;
+    await CallRingtoneOverrides.instance.load();
+    if (!mounted) return;
+    final l10n = AppLocalizations.of(context)!;
+    final pick = await showCallRingtoneSheet(
+      context,
+      title: l10n.callRingtoneSheetTitle,
+      hint: l10n.callRingtoneContactHint,
+      defaultHint: l10n.callRingtoneContactDefaultHint,
+      current: CallRingtoneOverrides.instance.get(_myId, peerId),
+    );
+    if (pick == null || !mounted) return;
+    if (pick.isDefault) {
+      await CallRingtoneOverrides.instance.clear(_myId, peerId);
+      if (!mounted) return;
+      showCustomNotification(context, l10n.callRingtoneReset);
+      return;
+    }
+    final ringtone = pick.ringtone!;
+    final saved = await CallRingtoneOverrides.instance.setFromPickedPath(
+      _myId,
+      peerId,
+      ringtone.path,
+      ringtone.name,
+    );
+    if (!mounted) return;
+    showCustomNotification(
+      context,
+      saved
+          ? l10n.callRingtoneSaved(_customName)
+          : l10n.callRingtoneSaveFailed,
+    );
   }
 
   String? get _realName {

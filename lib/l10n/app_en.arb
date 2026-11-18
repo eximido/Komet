@@ -2859,5 +2859,11 @@
   "callRingtoneSheetDefaultHint": "Standard phone ringtone",
   "callRingtoneSheetChooseFile": "Choose a file…",
   "callRingtoneTooLarge": "The file is too large (max 16 MB)",
-  "callRingtoneSaveFailed": "Couldn't save the ringtone"
+  "callRingtoneSaveFailed": "Couldn't save the ringtone",
+  "callRingtoneMenu": "Call ringtone",
+  "callRingtoneContactHint": "Plays on calls from this contact",
+  "callRingtoneContactDefaultHint": "The shared call melody from settings",
+  "callRingtoneSaved": "Ringtone updated for {name}",
+  "@callRingtoneSaved": {"placeholders": {"name": {"type": "String"}}},
+  "callRingtoneReset": "Reset to the default ringtone"
 }
