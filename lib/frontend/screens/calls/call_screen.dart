@@ -26,6 +26,7 @@ import '../../../core/utils/screen_wake.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../widgets/official_name.dart';
 import '../../widgets/call_video_view.dart';
+import '../../widgets/confirm_dialog.dart';
 import '../../widgets/custom_notification.dart';
 import '../../widgets/glossy_pill.dart';
 import '../../widgets/sheet_helpers.dart';
@@ -77,6 +78,8 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
   bool _stageOpen = false;
   CallSessionState _state = CallSessionState.connecting;
   bool _incomingPending = false;
+  bool _ignoreDialogOpen = false;
+  bool _closing = false;
 
   bool _isMuted = false;
   bool _isSpeaker = false;
@@ -170,7 +173,11 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
     }
     if (incoming != null) {
       _canceledSub = CallController.instance.incomingCanceled.listen((_) {
-        if (mounted && _incomingPending) _close();
+        if (!mounted || !_incomingPending) return;
+        // Звонок отменили, пока открыта модалка «пропустить?» —
+        // закрываем и её, не дожидаясь ответа пользователя.
+        if (_ignoreDialogOpen) Navigator.of(context).pop();
+        _close();
       });
     }
     if (widget.autoAccept && incoming != null) {
@@ -404,6 +411,26 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
     _close();
   }
 
+  // #***! «назад» на экране входящего: предлагаем пропустить звонок,
+  // не отклоняя его — звонящий просто не дождётся ответа
+  Future<void> _confirmIgnore() async {
+    final incoming = widget.incoming;
+    if (incoming == null || !_incomingPending || _closing) return;
+    final l10n = AppLocalizations.of(context)!;
+    _ignoreDialogOpen = true;
+    final ignore = await showConfirmDialog(
+      context,
+      title: l10n.callIgnoreTitle,
+      message: l10n.callIgnoreMessage,
+      confirmLabel: l10n.callIgnoreConfirm,
+      cancelLabel: l10n.callIgnoreStay,
+    );
+    _ignoreDialogOpen = false;
+    if (!mounted || !ignore) return;
+    CallController.instance.ignoreIncoming(incoming);
+    _close();
+  }
+
   // #***! пока принятие ещё идёт, своей сессии у экрана нет, но контроллер её
   // уже держит: без этого кнопка закрывала экран, а звонок соединялся дальше
   Future<void> _hangup() async {
@@ -414,9 +441,18 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
     _close();
   }
 
+  // #***! повторные закрытия (например, отмена звонка поверх уже идущего
+  // закрытия) не должны уносить маршруты под экраном звонка
   void _close() {
-    if (!mounted) return;
-    Navigator.of(context).maybePop();
+    if (!mounted || _closing) return;
+    _closing = true;
+    // На входящем системный «назад» перехватывает PopScope — программное
+    // закрытие (отклонить, отмена звонка, пропуск) идёт напрямую.
+    if (_incomingPending) {
+      Navigator.of(context).pop();
+    } else {
+      Navigator.of(context).maybePop();
+    }
   }
 
   Future<void> _toggleMute() async {
@@ -646,25 +682,34 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
                   ),
           );
 
-    return Theme(
-      data: Theme.of(context).copyWith(colorScheme: cs),
-      child: AnnotatedRegion<SystemUiOverlayStyle>(
-        value: SystemUiOverlayStyle.light.copyWith(
-          statusBarColor: Colors.transparent,
-          systemNavigationBarColor: cs.surface,
-          systemNavigationBarIconBrightness: Brightness.light,
-        ),
-        child: Scaffold(
-          backgroundColor: cs.surface,
-          body: Stack(
-            children: [
-              body,
-              if (!group &&
-                  !stage &&
-                  (_session?.localVideo == true ||
-                      _session?.localScreen == true))
-                _localPreview(cs),
-            ],
+    return PopScope(
+      // #***! «назад» на входящем не закрывает экран молча — спрашиваем,
+      // точно ли пропустить звонок; на идущем разговоре выход свободный
+      canPop: !_incomingPending,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _confirmIgnore();
+      },
+      child: Theme(
+        data: Theme.of(context).copyWith(colorScheme: cs),
+        child: AnnotatedRegion<SystemUiOverlayStyle>(
+          value: SystemUiOverlayStyle.light.copyWith(
+            statusBarColor: Colors.transparent,
+            systemNavigationBarColor: cs.surface,
+            systemNavigationBarIconBrightness: Brightness.light,
+          ),
+          child: Scaffold(
+            backgroundColor: cs.surface,
+            body: Stack(
+              children: [
+                body,
+                if (!group &&
+                    !stage &&
+                    (_session?.localVideo == true ||
+                        _session?.localScreen == true))
+                  _localPreview(cs),
+              ],
+            ),
           ),
         ),
       ),

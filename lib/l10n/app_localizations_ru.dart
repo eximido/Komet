@@ -7671,4 +7671,17 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get callRingtoneReset => 'Сброшено на мелодию по умолчанию';
+
+  @override
+  String get callIgnoreTitle => 'Пропустить звонок?';
+
+  @override
+  String get callIgnoreMessage =>
+      'Звонок не будет отклонён: звонящий просто не дождётся ответа. Мелодия и вибрация на вашем телефоне прекратятся.';
+
+  @override
+  String get callIgnoreConfirm => 'Пропустить';
+
+  @override
+  String get callIgnoreStay => 'Вернуться к звонку';
 }

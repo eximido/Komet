@@ -2368,5 +2368,9 @@
   "callVibrationLong": "Длинная",
   "callVibrationOnlySilent": "Только в беззвучном режиме",
   "callRingtonePreview": "Прослушать звонок",
-  "callRingtonePreviewStop": "Остановить прослушивание"
+  "callRingtonePreviewStop": "Остановить прослушивание",
+  "callIgnoreTitle": "Пропустить звонок?",
+  "callIgnoreMessage": "Звонок не будет отклонён: звонящий просто не дождётся ответа. Мелодия и вибрация на вашем телефоне прекратятся.",
+  "callIgnoreConfirm": "Пропустить",
+  "callIgnoreStay": "Вернуться к звонку"
 }

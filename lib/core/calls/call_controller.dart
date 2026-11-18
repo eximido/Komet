@@ -347,6 +347,14 @@ class CallController {
     }
   }
 
+  // #***! «пропустить» из модалки подтверждения: рингер и флаги окна
+  // снимаем, но REJECTED звонящему не отправляем — для него это
+  // «не дождался ответа», а не «отклонено»
+  void ignoreIncoming(IncomingCall call) {
+    dismissIncoming();
+    CallBridge.instance.notifyEnded(conversationId: call.conversationId);
+  }
+
   Future<void> endActive() => _active?.hangup() ?? Future.value();
 
   // #***! сигналим собеседнику про микрофон

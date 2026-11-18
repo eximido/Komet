@@ -13561,6 +13561,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Reset to the default ringtone'**
   String get callRingtoneReset;
+
+  /// No description provided for @callIgnoreTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Ignore the call?'**
+  String get callIgnoreTitle;
+
+  /// No description provided for @callIgnoreMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'The call won\'t be declined — the caller will just keep waiting for an answer. Your ringtone and vibration will stop.'**
+  String get callIgnoreMessage;
+
+  /// No description provided for @callIgnoreConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Ignore'**
+  String get callIgnoreConfirm;
+
+  /// No description provided for @callIgnoreStay.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to the call'**
+  String get callIgnoreStay;
 }
 
 class _AppLocalizationsDelegate

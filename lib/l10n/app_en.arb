@@ -2873,5 +2873,9 @@
   "callVibrationOnlySilent": "Only on silent",
   "callRingtonePreview": "Preview call sound",
   "callRingtonePreviewStop": "Stop preview",
-  "callRingtoneReset": "Reset to the default ringtone"
+  "callRingtoneReset": "Reset to the default ringtone",
+  "callIgnoreTitle": "Ignore the call?",
+  "callIgnoreMessage": "The call won't be declined — the caller will just keep waiting for an answer. Your ringtone and vibration will stop.",
+  "callIgnoreConfirm": "Ignore",
+  "callIgnoreStay": "Back to the call"
 }

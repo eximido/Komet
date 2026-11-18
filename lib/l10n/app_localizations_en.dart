@@ -7618,4 +7618,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get callRingtoneReset => 'Reset to the default ringtone';
+
+  @override
+  String get callIgnoreTitle => 'Ignore the call?';
+
+  @override
+  String get callIgnoreMessage =>
+      'The call won\'t be declined — the caller will just keep waiting for an answer. Your ringtone and vibration will stop.';
+
+  @override
+  String get callIgnoreConfirm => 'Ignore';
+
+  @override
+  String get callIgnoreStay => 'Back to the call';
 }
