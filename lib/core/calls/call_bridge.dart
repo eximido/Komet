@@ -54,6 +54,12 @@ class CallBridge {
       return;
     }
     if (action == 'ended') {
+      // #***! натив сам погасил рингер и уведомление, но флаги окна звонка
+      // (показ поверх экрана блокировки) снимаются только из notifyEnded;
+      // идущий разговор не трогаем — его сессия снимет их сама при завершении
+      if (!CallController.instance.isBusy) {
+        unawaited(notifyEnded());
+      }
       CallController.instance.dismissIncoming();
       return;
     }

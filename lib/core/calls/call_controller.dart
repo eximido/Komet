@@ -225,7 +225,10 @@ class CallController {
       onCanceled: () {
         if (isBusy) return;
         if (_pending?.conversationId == conversationId) dismissIncoming();
-        CallBridge.instance.cancelIncoming(conversationId: conversationId);
+        // #***! именно notifyEnded, а не cancelIncoming: только он снимает
+        // флаги показа поверх экрана блокировки, иначе они залипают
+        // на окне до перезапуска приложения
+        CallBridge.instance.notifyEnded(conversationId: conversationId);
       },
     );
     _incomingWatchdog = watchdog;
