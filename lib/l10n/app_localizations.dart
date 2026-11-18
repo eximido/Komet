@@ -13508,6 +13508,54 @@ abstract class AppLocalizations {
   /// **'Ringtone updated for {name}'**
   String callRingtoneSaved(String name);
 
+  /// No description provided for @callVibrationLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Vibration'**
+  String get callVibrationLabel;
+
+  /// No description provided for @callVibrationDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Default'**
+  String get callVibrationDefault;
+
+  /// No description provided for @callVibrationDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Disabled'**
+  String get callVibrationDisabled;
+
+  /// No description provided for @callVibrationShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Short'**
+  String get callVibrationShort;
+
+  /// No description provided for @callVibrationLong.
+  ///
+  /// In en, this message translates to:
+  /// **'Long'**
+  String get callVibrationLong;
+
+  /// No description provided for @callVibrationOnlySilent.
+  ///
+  /// In en, this message translates to:
+  /// **'Only on silent'**
+  String get callVibrationOnlySilent;
+
+  /// No description provided for @callRingtonePreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview call sound'**
+  String get callRingtonePreview;
+
+  /// No description provided for @callRingtonePreviewStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop preview'**
+  String get callRingtonePreviewStop;
+
   /// No description provided for @callRingtoneReset.
   ///
   /// In en, this message translates to:

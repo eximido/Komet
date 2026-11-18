@@ -7646,5 +7646,29 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
+  String get callVibrationLabel => 'Вибрация';
+
+  @override
+  String get callVibrationDefault => 'По умолчанию';
+
+  @override
+  String get callVibrationDisabled => 'Выключена';
+
+  @override
+  String get callVibrationShort => 'Короткая';
+
+  @override
+  String get callVibrationLong => 'Длинная';
+
+  @override
+  String get callVibrationOnlySilent => 'Только в беззвучном режиме';
+
+  @override
+  String get callRingtonePreview => 'Прослушать звонок';
+
+  @override
+  String get callRingtonePreviewStop => 'Остановить прослушивание';
+
+  @override
   String get callRingtoneReset => 'Сброшено на мелодию по умолчанию';
 }

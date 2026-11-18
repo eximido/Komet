@@ -28,6 +28,28 @@ class CallRingtone {
   }
 }
 
+// #***! пресет вибрации звонка, id совпадает со строкой в нативе
+/// Пресет вибрации входящего звонка.
+///
+/// [id] пишется в SharedPreferences, откуда его читает нативный
+/// `CallRinger`, поэтому значения менять нельзя — это формат хранения.
+enum CallVibration {
+  phoneDefault('default'),
+  disabled('disabled'),
+  short('short'),
+  long('long'),
+  onlySilent('only_silent');
+
+  const CallVibration(this.id);
+
+  final String id;
+
+  static CallVibration fromId(String? raw) => values.firstWhere(
+    (v) => v.id == raw,
+    orElse: () => CallVibration.phoneDefault,
+  );
+}
+
 const int kMaxRingtoneBytes = 16 * 1024 * 1024;
 const String _dirName = 'call_ringtones';
 
@@ -63,14 +85,22 @@ class CallRingtoneStore {
   static final CallRingtoneStore instance = CallRingtoneStore._();
 
   static const _prefsKey = 'call_ringtone';
+  static const _vibrationKey = 'call_ringtone_vibration';
 
   final ValueNotifier<CallRingtone?> current = ValueNotifier(null);
+
+  // #***! пресет вибрации звонка, его читает нативный рингер
+  final ValueNotifier<CallVibration> vibration = ValueNotifier(
+    CallVibration.phoneDefault,
+  );
+
   bool _loaded = false;
 
   Future<void> load() async {
     if (_loaded) return;
     _loaded = true;
     final prefs = await SharedPreferences.getInstance();
+    vibration.value = CallVibration.fromId(prefs.getString(_vibrationKey));
     final raw = prefs.getString(_prefsKey);
     if (raw == null) return;
     final Object? decoded;
@@ -82,6 +112,12 @@ class CallRingtoneStore {
     final ringtone = CallRingtone.fromJson(decoded);
     if (ringtone == null || !await File(ringtone.path).exists()) return;
     current.value = ringtone;
+  }
+
+  Future<void> setVibration(CallVibration value) async {
+    vibration.value = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_vibrationKey, value.id);
   }
 
   Future<bool> setFromPickedPath(String sourcePath, String displayName) async {

@@ -141,6 +141,25 @@ class CallBridge {
     }
   }
 
+  // #***! прослушать мелодию звонка с текущими настройками, кнопка в настройках
+  Future<void> previewRingtone() async {
+    if (!_android) return;
+    try {
+      await _method.invokeMethod<void>('previewCallRingtone');
+    } catch (e) {
+      logger.w('CallBridge.previewRingtone: $e');
+    }
+  }
+
+  Future<void> stopRingtonePreview() async {
+    if (!_android) return;
+    try {
+      await _method.invokeMethod<void>('stopCallRingtonePreview');
+    } catch (e) {
+      logger.w('CallBridge.stopRingtonePreview: $e');
+    }
+  }
+
   // #***! с андроида 14 полноэкранное уведомление требует отдельного разрешения
   Future<bool> canUseFullScreenIntent() async {
     if (!_android) return true;

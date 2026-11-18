@@ -8,12 +8,27 @@ object CallRingtones {
     private const val FLUTTER_PREFS = "FlutterSharedPreferences"
     private const val GLOBAL_KEY = "flutter.call_ringtone"
     private const val OVERRIDES_KEY = "flutter.call_ringtone_overrides"
+    private const val VIBRATION_KEY = "flutter.call_ringtone_vibration"
+
+    const val VIBRATION_DEFAULT = "default"
+    const val VIBRATION_DISABLED = "disabled"
+    const val VIBRATION_SHORT = "short"
+    const val VIBRATION_LONG = "long"
+    const val VIBRATION_ONLY_SILENT = "only_silent"
 
     fun pick(ctx: Context, account: String, callerId: String): String? {
         if (account.isNotEmpty() && callerId.isNotEmpty()) {
             contactPath(ctx, account, callerId)?.let { return it }
         }
         return globalPath(ctx)
+    }
+
+    // #***! пресет вибрации звонка: default/disabled/short/long/only_silent
+    fun vibration(ctx: Context): String = try {
+        ctx.getSharedPreferences(FLUTTER_PREFS, Context.MODE_PRIVATE)
+            .getString(VIBRATION_KEY, VIBRATION_DEFAULT) ?: VIBRATION_DEFAULT
+    } catch (_: Exception) {
+        VIBRATION_DEFAULT
     }
 
     private fun contactPath(ctx: Context, account: String, callerId: String): String? {

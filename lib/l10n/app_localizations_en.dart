@@ -7593,5 +7593,29 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get callVibrationLabel => 'Vibration';
+
+  @override
+  String get callVibrationDefault => 'Default';
+
+  @override
+  String get callVibrationDisabled => 'Disabled';
+
+  @override
+  String get callVibrationShort => 'Short';
+
+  @override
+  String get callVibrationLong => 'Long';
+
+  @override
+  String get callVibrationOnlySilent => 'Only on silent';
+
+  @override
+  String get callRingtonePreview => 'Preview call sound';
+
+  @override
+  String get callRingtonePreviewStop => 'Stop preview';
+
+  @override
   String get callRingtoneReset => 'Reset to the default ringtone';
 }

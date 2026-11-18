@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../../backend/modules/account/account_models.dart';
+import '../../../core/calls/call_bridge.dart';
 import '../../../core/config/app_badge.dart';
 import '../../../core/config/app_notifications.dart';
 import '../../../core/push/fkm_bridge.dart';
@@ -143,6 +145,10 @@ class _NotificationsScreenState extends State<NotificationsScreen>
   bool _batteryRestricted = false;
   bool _hapticsEnabled = Haptics.enabled;
 
+  // #***! превью мелодии звонка, натив останавливает его сам через 15 секунд
+  bool _ringtonePreviewing = false;
+  Timer? _ringtonePreviewStop;
+
   @override
   void initState() {
     super.initState();
@@ -156,6 +162,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
   void dispose() {
     _lifecycle.dispose();
     _push.dispose();
+    _stopRingtonePreview();
     super.dispose();
   }
 
@@ -223,6 +230,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
     if (pick == null || !mounted) return;
     if (pick.isDefault) {
       await CallRingtoneStore.instance.clear();
+      _restartRingtonePreview();
       return;
     }
     final ringtone = pick.ringtone!;
@@ -230,9 +238,73 @@ class _NotificationsScreenState extends State<NotificationsScreen>
       ringtone.path,
       ringtone.name,
     );
-    if (saved || !mounted) return;
-    showCustomNotification(context, l10n.callRingtoneSaveFailed);
+    if (!saved) {
+      if (mounted) showCustomNotification(context, l10n.callRingtoneSaveFailed);
+      return;
+    }
+    _restartRingtonePreview();
   }
+
+  // #***! прослушать текущий набор: мелодия и вибрация
+  Future<void> _toggleRingtonePreview() async {
+    if (_ringtonePreviewing) {
+      _stopRingtonePreview();
+      if (mounted) setState(() {});
+      return;
+    }
+    await CallBridge.instance.previewRingtone();
+    if (!mounted) return;
+    setState(() => _ringtonePreviewing = true);
+    _schedulePreviewStop();
+  }
+
+  // #***! настройку сменили при живом превью — перезапускаем с новой
+  void _restartRingtonePreview() {
+    if (!_ringtonePreviewing) return;
+    unawaited(CallBridge.instance.previewRingtone());
+    _schedulePreviewStop();
+  }
+
+  void _schedulePreviewStop() {
+    _ringtonePreviewStop?.cancel();
+    _ringtonePreviewStop = Timer(const Duration(seconds: 15), () {
+      _ringtonePreviewStop = null;
+      if (_ringtonePreviewing && mounted) {
+        setState(() => _ringtonePreviewing = false);
+      }
+    });
+  }
+
+  void _stopRingtonePreview() {
+    _ringtonePreviewStop?.cancel();
+    _ringtonePreviewStop = null;
+    if (!_ringtonePreviewing) return;
+    _ringtonePreviewing = false;
+    unawaited(CallBridge.instance.stopRingtonePreview());
+  }
+
+  Future<void> _pickVibration() async {
+    final l10n = AppLocalizations.of(context)!;
+    final picked = await showChoiceSheet<CallVibration>(
+      context,
+      title: l10n.callVibrationLabel,
+      options: CallVibration.values,
+      selected: CallRingtoneStore.instance.vibration.value,
+      labelOf: (vibration) => _vibrationLabel(l10n, vibration),
+    );
+    if (picked == null || !mounted) return;
+    await CallRingtoneStore.instance.setVibration(picked);
+    _restartRingtonePreview();
+  }
+
+  String _vibrationLabel(AppLocalizations l10n, CallVibration vibration) =>
+      switch (vibration) {
+        CallVibration.phoneDefault => l10n.callVibrationDefault,
+        CallVibration.disabled => l10n.callVibrationDisabled,
+        CallVibration.short => l10n.callVibrationShort,
+        CallVibration.long => l10n.callVibrationLong,
+        CallVibration.onlySilent => l10n.callVibrationOnlySilent,
+      };
 
   Future<void> _pickMode({
     required String title,
@@ -486,10 +558,36 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                   subtitle: l10n.callRingtoneSubtitle,
                   value: ringtone?.name ?? l10n.callRingtoneDefault,
                   onTap: _pickRingtone,
+                ),
+              ),
+              ValueListenableBuilder<CallVibration>(
+                valueListenable: CallRingtoneStore.instance.vibration,
+                builder: (context, vibration, _) => SettingsNavTile(
+                  icon: Symbols.vibration,
+                  label: l10n.callVibrationLabel,
+                  value: _vibrationLabel(l10n, vibration),
+                  onTap: _pickVibration,
                   isLast: true,
                 ),
               ),
             ],
+          ),
+          Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: SizedBox(
+              width: double.infinity,
+              child: FilledButton.tonalIcon(
+                onPressed: _toggleRingtonePreview,
+                icon: Icon(
+                  _ringtonePreviewing ? Symbols.stop : Symbols.play_arrow,
+                ),
+                label: Text(
+                  _ringtonePreviewing
+                      ? l10n.callRingtonePreviewStop
+                      : l10n.callRingtonePreview,
+                ),
+              ),
+            ),
           ),
         ],
       ],

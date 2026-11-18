@@ -228,6 +228,12 @@ object CallNotifier {
 object CallRinger {
     private const val FINISHED_LIMIT = 32
 
+    // Превью из настроек помечено пустым id: настоящий звонок его прерывает,
+    // а остановка превью не глушит настоящий звонок.
+    private const val PREVIEW = ""
+
+    private const val PREVIEW_LIMIT = 15_000L
+
     private val handler = Handler(Looper.getMainLooper())
     private var ringtone: Ringtone? = null
     private var vibrator: Vibrator? = null
@@ -256,14 +262,11 @@ object CallRinger {
             acquire(60_000L)
         }
 
-        val audio = ctx.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-        val mode = audio.ringerMode
+        val mode = ringerMode(ctx)
         if (mode == AudioManager.RINGER_MODE_NORMAL) {
             playRingtone(ctx, callerId, account)
-            vibrate(ctx)
-        } else if (mode == AudioManager.RINGER_MODE_VIBRATE) {
-            vibrate(ctx)
         }
+        applyVibration(ctx, mode)
 
         val t = Runnable { onTimeout(ctx) }
         timeout = t
@@ -274,6 +277,25 @@ object CallRinger {
     @Synchronized
     fun stop(conversationId: String? = null) {
         if (!conversationId.isNullOrEmpty()) markFinished(conversationId)
+        stopRinging()
+    }
+
+    // #***! прослушать текущую мелодию и вибрацию из общих настроек
+    @Synchronized
+    fun preview(ctx: Context) {
+        if (ringing != null && ringing != PREVIEW) return
+        stopRinging()
+        ringing = PREVIEW
+        playRingtone(ctx, "", "")
+        applyVibration(ctx, ringerMode(ctx))
+        val t = Runnable { stopPreview() }
+        timeout = t
+        handler.postDelayed(t, PREVIEW_LIMIT)
+    }
+
+    @Synchronized
+    fun stopPreview() {
+        if (ringing != PREVIEW) return
         stopRinging()
     }
 
@@ -309,6 +331,12 @@ object CallRinger {
     private fun onTimeout(ctx: Context) {
         stop()
         NotificationManagerCompat.from(ctx).cancel(CallConst.NOTIF_ID)
+    }
+
+    private fun ringerMode(ctx: Context): Int = try {
+        (ctx.getSystemService(Context.AUDIO_SERVICE) as AudioManager).ringerMode
+    } catch (_: Exception) {
+        AudioManager.RINGER_MODE_NORMAL
     }
 
     private fun playRingtone(ctx: Context, callerId: String, account: String) {
@@ -359,11 +387,31 @@ object CallRinger {
         }
     }
 
-    private fun vibrate(ctx: Context) {
+    // #***! вибрация по пресету, режим звука телефона тоже в счёт:
+    // на обычном звонке вибрируют все кроме only_silent и disabled,
+    // в вибро-режиме все кроме disabled, в полной тишине только only_silent
+    private fun applyVibration(ctx: Context, mode: Int) {
+        val preset = CallRingtones.vibration(ctx)
+        if (preset == CallRingtones.VIBRATION_DISABLED) return
+        val onlySilent = preset == CallRingtones.VIBRATION_ONLY_SILENT
+        when (mode) {
+            AudioManager.RINGER_MODE_NORMAL -> if (onlySilent) return
+            AudioManager.RINGER_MODE_VIBRATE -> Unit
+            AudioManager.RINGER_MODE_SILENT -> if (!onlySilent) return
+            else -> return
+        }
+        val pattern = when (preset) {
+            CallRingtones.VIBRATION_SHORT -> longArrayOf(0, 120, 1180)
+            CallRingtones.VIBRATION_LONG -> longArrayOf(0, 2000, 1000)
+            else -> longArrayOf(0, 1000, 1000)
+        }
+        startVibration(ctx, pattern)
+    }
+
+    private fun startVibration(ctx: Context, pattern: LongArray) {
         try {
             val vib = ctx.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
             if (!vib.hasVibrator()) return
-            val pattern = longArrayOf(0, 1000, 1000)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 vib.vibrate(VibrationEffect.createWaveform(pattern, 0))
             } else {

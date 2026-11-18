@@ -2360,5 +2360,13 @@
   "callRingtoneContactDefaultHint": "Общая мелодия звонка из настроек",
   "callRingtoneSaved": "Мелодия для {name} обновлена",
   "@callRingtoneSaved": {"placeholders": {"name": {"type": "String"}}},
-  "callRingtoneReset": "Сброшено на мелодию по умолчанию"
+  "callRingtoneReset": "Сброшено на мелодию по умолчанию",
+  "callVibrationLabel": "Вибрация",
+  "callVibrationDefault": "По умолчанию",
+  "callVibrationDisabled": "Выключена",
+  "callVibrationShort": "Короткая",
+  "callVibrationLong": "Длинная",
+  "callVibrationOnlySilent": "Только в беззвучном режиме",
+  "callRingtonePreview": "Прослушать звонок",
+  "callRingtonePreviewStop": "Остановить прослушивание"
 }

@@ -385,6 +385,14 @@ class MainActivity : AudioServiceFragmentActivity() {
                     NotificationManagerCompat.from(this).cancel(CallConst.NOTIF_ID)
                     result.success(null)
                 }
+                "previewCallRingtone" -> {
+                    CallRinger.preview(applicationContext)
+                    result.success(null)
+                }
+                "stopCallRingtonePreview" -> {
+                    CallRinger.stopPreview()
+                    result.success(null)
+                }
                 "canUseFullScreenIntent" -> {
                     result.success(
                         NotificationManagerCompat.from(this).canUseFullScreenIntent(),

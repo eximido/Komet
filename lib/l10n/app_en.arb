@@ -2865,5 +2865,13 @@
   "callRingtoneContactDefaultHint": "The shared call melody from settings",
   "callRingtoneSaved": "Ringtone updated for {name}",
   "@callRingtoneSaved": {"placeholders": {"name": {"type": "String"}}},
+  "callVibrationLabel": "Vibration",
+  "callVibrationDefault": "Default",
+  "callVibrationDisabled": "Disabled",
+  "callVibrationShort": "Short",
+  "callVibrationLong": "Long",
+  "callVibrationOnlySilent": "Only on silent",
+  "callRingtonePreview": "Preview call sound",
+  "callRingtonePreviewStop": "Stop preview",
   "callRingtoneReset": "Reset to the default ringtone"
 }
