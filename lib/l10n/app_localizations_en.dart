@@ -7548,4 +7548,32 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get storyShowFailed => 'Couldn\'t show the stories';
+
+  @override
+  String get callRingtoneSectionTitle => 'Call melody';
+
+  @override
+  String get callRingtoneLabel => 'Call melody';
+
+  @override
+  String get callRingtoneSubtitle =>
+      'Incoming call sound while the app is in the background';
+
+  @override
+  String get callRingtoneDefault => 'Default';
+
+  @override
+  String get callRingtoneSheetTitle => 'Call melody';
+
+  @override
+  String get callRingtoneSheetDefaultHint => 'Standard phone ringtone';
+
+  @override
+  String get callRingtoneSheetChooseFile => 'Choose a file…';
+
+  @override
+  String get callRingtoneTooLarge => 'The file is too large (max 16 MB)';
+
+  @override
+  String get callRingtoneSaveFailed => 'Couldn\'t save the ringtone';
 }

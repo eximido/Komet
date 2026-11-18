@@ -9,10 +9,12 @@ import '../../../core/config/app_notifications.dart';
 import '../../../core/push/fkm_bridge.dart';
 import '../../../core/push/fkm_controller.dart';
 import '../../../core/push/notification_bridge.dart';
+import '../../../core/storage/call_ringtone_store.dart';
 import '../../../core/utils/haptics.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../core/config/build_profile.dart';
 import '../../../main.dart' show accountModule;
+import '../../widgets/call_ringtone_sheet.dart';
 import '../../widgets/choice_sheet.dart';
 import '../../widgets/confirm_dialog.dart';
 import '../../widgets/connection_status.dart';
@@ -146,6 +148,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
     super.initState();
     _lifecycle = AppLifecycleListener(onResume: _refreshBatteryState);
     _push.load();
+    CallRingtoneStore.instance.load();
     _refreshBatteryState();
   }
 
@@ -207,6 +210,28 @@ class _NotificationsScreenState extends State<NotificationsScreen>
         builder: (context) => _OtherNotificationsScreen(push: _push),
       ),
     );
+  }
+
+  Future<void> _pickRingtone() async {
+    final l10n = AppLocalizations.of(context)!;
+    final pick = await showCallRingtoneSheet(
+      context,
+      title: l10n.callRingtoneSheetTitle,
+      defaultHint: l10n.callRingtoneSheetDefaultHint,
+      current: CallRingtoneStore.instance.current.value,
+    );
+    if (pick == null || !mounted) return;
+    if (pick.isDefault) {
+      await CallRingtoneStore.instance.clear();
+      return;
+    }
+    final ringtone = pick.ringtone!;
+    final saved = await CallRingtoneStore.instance.setFromPickedPath(
+      ringtone.path,
+      ringtone.name,
+    );
+    if (saved || !mounted) return;
+    showCustomNotification(context, l10n.callRingtoneSaveFailed);
   }
 
   Future<void> _pickMode({
@@ -445,6 +470,28 @@ class _NotificationsScreenState extends State<NotificationsScreen>
             ),
           ],
         ),
+        const SizedBox(height: 20),
+        if (Platform.isAndroid) ...[
+          SectionHeader(
+            l10n.callRingtoneSectionTitle,
+            padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+          ),
+          SettingsCard(
+            children: [
+              ValueListenableBuilder<CallRingtone?>(
+                valueListenable: CallRingtoneStore.instance.current,
+                builder: (context, ringtone, _) => SettingsNavTile(
+                  icon: Symbols.music_note,
+                  label: l10n.callRingtoneLabel,
+                  subtitle: l10n.callRingtoneSubtitle,
+                  value: ringtone?.name ?? l10n.callRingtoneDefault,
+                  onTap: _pickRingtone,
+                  isLast: true,
+                ),
+              ),
+            ],
+          ),
+        ],
       ],
     );
   }

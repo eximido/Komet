@@ -2850,5 +2850,14 @@
   "storyHiddenUndo": "Undo",
   "storyMenuShow": "Show author's stories",
   "storyShownNotice": "The author's stories are visible again",
-  "storyShowFailed": "Couldn't show the stories"
+  "storyShowFailed": "Couldn't show the stories",
+  "callRingtoneSectionTitle": "Call melody",
+  "callRingtoneLabel": "Call melody",
+  "callRingtoneSubtitle": "Incoming call sound while the app is in the background",
+  "callRingtoneDefault": "Default",
+  "callRingtoneSheetTitle": "Call melody",
+  "callRingtoneSheetDefaultHint": "Standard phone ringtone",
+  "callRingtoneSheetChooseFile": "Choose a file…",
+  "callRingtoneTooLarge": "The file is too large (max 16 MB)",
+  "callRingtoneSaveFailed": "Couldn't save the ringtone"
 }

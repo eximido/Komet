@@ -7601,4 +7601,32 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get storyShowFailed => 'Не удалось вернуть истории';
+
+  @override
+  String get callRingtoneSectionTitle => 'Мелодия звонка';
+
+  @override
+  String get callRingtoneLabel => 'Мелодия звонка';
+
+  @override
+  String get callRingtoneSubtitle =>
+      'Звук входящих звонков, пока приложение свёрнуто';
+
+  @override
+  String get callRingtoneDefault => 'По умолчанию';
+
+  @override
+  String get callRingtoneSheetTitle => 'Мелодия звонка';
+
+  @override
+  String get callRingtoneSheetDefaultHint => 'Обычный звонок телефона';
+
+  @override
+  String get callRingtoneSheetChooseFile => 'Выбрать файл…';
+
+  @override
+  String get callRingtoneTooLarge => 'Файл слишком большой (макс. 16 МБ)';
+
+  @override
+  String get callRingtoneSaveFailed => 'Не удалось сохранить мелодию';
 }

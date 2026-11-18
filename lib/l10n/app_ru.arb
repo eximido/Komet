@@ -2345,5 +2345,14 @@
   "storyHiddenUndo": "Вернуть",
   "storyMenuShow": "Показывать истории автора",
   "storyShownNotice": "Истории автора снова видны",
-  "storyShowFailed": "Не удалось вернуть истории"
+  "storyShowFailed": "Не удалось вернуть истории",
+  "callRingtoneSectionTitle": "Мелодия звонка",
+  "callRingtoneLabel": "Мелодия звонка",
+  "callRingtoneSubtitle": "Звук входящих звонков, пока приложение свёрнуто",
+  "callRingtoneDefault": "По умолчанию",
+  "callRingtoneSheetTitle": "Мелодия звонка",
+  "callRingtoneSheetDefaultHint": "Обычный звонок телефона",
+  "callRingtoneSheetChooseFile": "Выбрать файл…",
+  "callRingtoneTooLarge": "Файл слишком большой (макс. 16 МБ)",
+  "callRingtoneSaveFailed": "Не удалось сохранить мелодию"
 }

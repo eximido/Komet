@@ -12,6 +12,7 @@ import android.media.AudioAttributes
 import android.media.AudioManager
 import android.media.Ringtone
 import android.media.RingtoneManager
+import android.net.Uri
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -24,6 +25,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.Person
 import androidx.core.graphics.drawable.IconCompat
 import org.json.JSONObject
+import java.io.File
 
 object AppState {
     @Volatile
@@ -305,6 +307,32 @@ object CallRinger {
     }
 
     private fun playRingtone(ctx: Context) {
+        val custom = CallRingtones.globalPath(ctx)
+        if (custom != null && playRingtoneFile(ctx, custom)) return
+        playDefaultRingtone(ctx)
+    }
+
+    private fun playRingtoneFile(ctx: Context, path: String): Boolean {
+        try {
+            val rt = RingtoneManager.getRingtone(ctx, Uri.fromFile(File(path)))
+                ?: return false
+            rt.audioAttributes = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                .build()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                rt.isLooping = true
+            }
+            rt.play()
+            ringtone = rt
+            return true
+        } catch (e: Exception) {
+            Log.w("KometFcm", "custom ringtone failed: ${e.message}")
+            return false
+        }
+    }
+
+    private fun playDefaultRingtone(ctx: Context) {
         try {
             val uri = RingtoneManager.getActualDefaultRingtoneUri(
                 ctx, RingtoneManager.TYPE_RINGTONE,

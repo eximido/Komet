@@ -13429,6 +13429,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t show the stories'**
   String get storyShowFailed;
+
+  /// No description provided for @callRingtoneSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Call melody'**
+  String get callRingtoneSectionTitle;
+
+  /// No description provided for @callRingtoneLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Call melody'**
+  String get callRingtoneLabel;
+
+  /// No description provided for @callRingtoneSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Incoming call sound while the app is in the background'**
+  String get callRingtoneSubtitle;
+
+  /// No description provided for @callRingtoneDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Default'**
+  String get callRingtoneDefault;
+
+  /// No description provided for @callRingtoneSheetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Call melody'**
+  String get callRingtoneSheetTitle;
+
+  /// No description provided for @callRingtoneSheetDefaultHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Standard phone ringtone'**
+  String get callRingtoneSheetDefaultHint;
+
+  /// No description provided for @callRingtoneSheetChooseFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a file…'**
+  String get callRingtoneSheetChooseFile;
+
+  /// No description provided for @callRingtoneTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'The file is too large (max 16 MB)'**
+  String get callRingtoneTooLarge;
+
+  /// No description provided for @callRingtoneSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save the ringtone'**
+  String get callRingtoneSaveFailed;
 }
 
 class _AppLocalizationsDelegate
