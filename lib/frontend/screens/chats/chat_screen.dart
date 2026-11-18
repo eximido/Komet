@@ -107,6 +107,7 @@ import 'chat/view/throttled_message_scrollbar.dart';
 import 'chat/view/chat_app_bar.dart';
 import 'chat/view/composer_area.dart';
 import 'chat/view/composer_input.dart' show BotStartPrompt;
+import 'chat/view/floating_date.dart';
 import 'chat/view/chat_body_layout.dart';
 import 'chat/view/chat_drop_zone.dart';
 import 'chat/view/shimmer_loading.dart';
@@ -5036,26 +5037,37 @@ class _ChatScreenState extends State<ChatScreen>
   }
 
   void _updateFloatingDate() {
-    if (!mounted || _separatorKeys.isEmpty) return;
-    DateTime? result;
+    if (!mounted) return;
 
     final listRenderBox = _listKey.currentContext?.findRenderObject();
     if (listRenderBox is! RenderBox) return;
 
+    // #***! собираем геометрию всех построенных элементов с датами:
+    // разделители дней и строки сообщений. Искать дату только по
+    // разделителям, ушедшим за верхний край, нельзя: в каналах и
+    // группах посты высокие, разделитель дня выше края часто не
+    // построен (ленивый список), и тогда строка с датой будет пропадать.
+    // Верхний элемент У САМОГО края построен всегда — его дата
+    // и есть дата просматриваемого сообщения.
+    final rows = <FloatingDateRow>[];
     _separatorKeys.forEach((dayMillis, gkey) {
-      final ctx = gkey.currentContext;
-      if (ctx == null) return;
-      final box = ctx.findRenderObject();
-      if (box is! RenderBox) return;
-      final pos = box.localToGlobal(Offset.zero, ancestor: listRenderBox);
-      if (pos.dy + box.size.height < 4) {
-        final date = DateTime.fromMillisecondsSinceEpoch(dayMillis);
-        if (result == null || date.isAfter(result!)) {
-          result = date;
-        }
-      }
+      final row = FloatingDateResolver.rowOf(
+        listRenderBox,
+        gkey.currentContext,
+        FloatingDateResolver.dayOf(dayMillis),
+      );
+      if (row != null) rows.add(row);
     });
+    for (final msg in _messages) {
+      final row = FloatingDateResolver.rowOf(
+        listRenderBox,
+        _messageKeys[msg.id]?.currentContext,
+        FloatingDateResolver.dayOf(msg.time),
+      );
+      if (row != null) rows.add(row);
+    }
 
+    final result = FloatingDateResolver.resolve(rows);
     if (result == null) return;
 
     final bool dateChanged = result != _floatingDate.value;
