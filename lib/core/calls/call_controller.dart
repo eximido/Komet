@@ -12,6 +12,7 @@ import 'call_link.dart';
 import 'call_permissions.dart';
 import 'call_session.dart';
 import 'conversation_params.dart';
+import 'incoming_call_watchdog.dart';
 import 'ws2_signaling.dart';
 
 // #***! входящий из пуша или с нативного экрана
@@ -86,6 +87,9 @@ class CallController {
   IncomingCall? _pending;
   IncomingCall? get pendingIncoming => _pending;
 
+  // #***! слушатель отмены входящего, живёт пока звонок звонит
+  IncomingCallWatchdog? _incomingWatchdog;
+
   bool _starting = false;
 
   // #***! занято, второй звонок не берём
@@ -124,6 +128,7 @@ class CallController {
     // приём оттуда вернётся через injectFromNative.
     if (!appResumed && FkmController.instance.isSupported) {
       unawaited(FkmController.instance.showIncomingCall(payload));
+      _watchBackgroundIncoming(vcp, conversationId, callerId);
       return;
     }
 
@@ -183,10 +188,57 @@ class CallController {
     if (isBusy) return;
     if (_pending?.conversationId == incoming.conversationId) return;
     _pending = incoming;
+    _startIncomingWatchdog(incoming);
     _incoming.add(incoming);
   }
 
+  // #***! в фоне экрана нет, но нативный рингер тоже надо погасить при отмене
+  void _watchBackgroundIncoming(
+    String vcp,
+    String conversationId,
+    int callerId,
+  ) {
+    if (!FkmController.instance.enabled.value) return;
+    final params = ConversationParams.decode(vcp);
+    if (params == null) return;
+    _startIncomingWatchdog(
+      IncomingCall(
+        conversationId: conversationId,
+        callerId: callerId,
+        isVideo: false,
+        params: params,
+      ),
+    );
+  }
+
+  // #***! звонящий может отменить звонок до ответа, узнаём об этом из сигналки
+  void _startIncomingWatchdog(IncomingCall incoming) {
+    _stopIncomingWatchdog();
+    final conversationId = incoming.conversationId;
+    final watchdog = IncomingCallWatchdog(
+      config: Ws2Config.fromVcp(
+        incoming.params,
+        conversationId: conversationId,
+        device: _api?.callsDevice,
+        osVersion: _api?.callsOsVersion,
+      ),
+      onCanceled: () {
+        if (isBusy) return;
+        if (_pending?.conversationId == conversationId) dismissIncoming();
+        CallBridge.instance.cancelIncoming(conversationId: conversationId);
+      },
+    );
+    _incomingWatchdog = watchdog;
+    watchdog.start();
+  }
+
+  void _stopIncomingWatchdog() {
+    _incomingWatchdog?.dispose();
+    _incomingWatchdog = null;
+  }
+
   void dismissIncoming() {
+    _stopIncomingWatchdog();
     if (_pending == null) return;
     _pending = null;
     _canceled.add(null);
@@ -252,6 +304,7 @@ class CallController {
   Future<CallSession> acceptIncoming(IncomingCall call) async {
     await CallPermissions.requireMicrophone();
     _pending = null;
+    _stopIncomingWatchdog();
     CallBridge.instance.cancelIncoming(conversationId: call.conversationId);
     final config = Ws2Config.fromVcp(
       call.params,
@@ -273,6 +326,7 @@ class CallController {
   // #***! отклонение
   Future<void> rejectIncoming(IncomingCall call) async {
     _pending = null;
+    _stopIncomingWatchdog();
     CallBridge.instance.notifyEnded(conversationId: call.conversationId);
     final config = Ws2Config.fromVcp(
       call.params,
@@ -346,6 +400,7 @@ class CallController {
   }
 
   void dispose() {
+    _stopIncomingWatchdog();
     _activeSub?.cancel();
     _pushSub?.cancel();
     _incoming.close();
